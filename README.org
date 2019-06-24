@@ -1,0 +1,11 @@
+* fi-emacs
+
+/fi-emacs/ is a collection of several packages that may provide the user with a holistic way of managing their GNU Emacs configuration.
+
+** Components
+
++ fi-config :: configuration helpers for users
++ fi-leaf :: TODO helpers for `leaf.el` integration
++ fi-auto :: advanced autoloading of packages
++ fi-edit :: TODO
++ fi-subr :: misc helper functions for fi and users
