@@ -26,7 +26,8 @@
 ;;; Code
 
 (defmacro fi-configure-gui (&rest body)
-  "Run `body' whenever the Emacs GUI is ready."
+  "Evaluate BODY whenever the Emacs GUI is ready.
+If the GUI is already running or has previously been started, execute BODY immediately."
   `(if (and (display-graphic-p) (window-system))
        (progn ,@body)
      (add-hook 'focus-in-hook 'fi--run-at-gui)

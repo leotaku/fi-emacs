@@ -28,7 +28,7 @@
 (require 'fi-subr)
 
 (defun fi-auto-at (place file)
-  "Autoload a feature `file' from an external function `place'."
+  "Autoload a feature FILE from an external function PLACE."
   (advice-add place :before
               `(lambda () (require ,file))))
 

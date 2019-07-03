@@ -28,7 +28,8 @@
 (require 'seq)
 
 (defun fi-simulate-key (key &optional keymap)
-  "Send fake keypresses for `key' in `keymap'."
+  "Send fake keypresses for KEY in KEYMAP.
+KEY should be a key sequence in internal Emacs notation."
   (let ((overriding-local-map (or keymap global-map)))
     (setq unread-command-events
           (nconc
@@ -37,18 +38,18 @@
            unread-command-events))))
 
 (defun fi-insert-at (list n item)
-  "Return `list' with `item' inserted at position `n'."
+  "Return LIST with ITEM inserted at position `n'."
   (nconc (seq-take list n) (cons item (seq-drop list n))))
 
 (defun fi-insert-after (list after item)
-  "Return `list' with `item' inserted right after `after'."
+  "Return LIST with ITEM inserted right after AFTER."
   (let ((n (1+ (seq-position list after))))
     (if n
         (fi-insert-at list n item)
       list)))
 
 (defun fi-insert-before (list before item)
-  "Return `list' with `item' inserted right before `before'."
+  "Return LIST with ITEM inserted right before BEFORE."
   (let ((n (seq-position list before)))
     (if n
         (fi-insert-at list n item)
