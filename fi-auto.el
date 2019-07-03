@@ -32,18 +32,13 @@
   (advice-add place :before
               `(lambda () (require ,file))))
 
-(defmacro fi-auto-bind (key bind file &optional keymap)
-  "Autoload feature `file' from a key that executes `bind'.
-
-All arguments but `bind' are evaluated and thus should be quoted.
-`bind' is not evaluated, as it may contain keymaps that have yet to be defined."
-  (let* ((keymap (or (eval keymap) 'global-map))
-         (key (eval key))
-         (file (eval file)))
-    `(define-key ,keymap ,key
-       (lambda () (interactive)
-         (require ',file)
-         (define-key ,keymap ,key ,bind)
-         (fi-simulate-key ,key ,keymap)))))
+(defun fi-auto-keymap (key bind file &optional keymap)
+  "Autoload feature FILE from a key that then executes the keymap BIND."
+  (let* ((keymap (or keymap 'global-map)))
+    (eval `(define-key ,keymap ,key
+             (lambda () (interactive)
+               (require ',file)
+               (define-key ,keymap ,key ,bind)
+               (fi-simulate-key ,key ,keymap))))))
 
 (provide 'fi-auto)
