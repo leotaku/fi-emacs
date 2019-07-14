@@ -25,6 +25,18 @@
 
 ;;; Code
 
+(defmacro fi-csetq (sym value)
+  "Set the default value of symbol named SYM, respecting the custom-set property.
+Taken from the following blogpost: `https://oremacs.com/2015/01/17/setting-up-ediff/'."
+  `(fi-cset ',sym ,value))
+
+(defun fi-cset (symbol value)
+  "Set the default value of SYMBOL, respecting the custom-set property.
+Taken from the following blogpost: `https://oremacs.com/2015/01/17/setting-up-ediff/'."
+  (funcall (or (get symbol 'custom-set)
+               'set-default)
+           symbol value))
+
 (defmacro fi-configure-gui (&rest body)
   "Evaluate BODY whenever the Emacs GUI is ready.
 If the GUI is already running or has previously been started, execute BODY immediately."
