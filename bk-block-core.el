@@ -5,6 +5,7 @@
 ;; TODO: support multiple same keywords in block by appending
 ;; TODO: allow reading multiple vars in deftransition
 ;; TODO: remove deftransition argument and put it in order instead
+;; TODO: allow escaping , comma in blocks
 
 (require 'cl)
 (require 'seq)
