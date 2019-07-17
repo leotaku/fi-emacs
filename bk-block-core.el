@@ -29,13 +29,17 @@ Generally only altered by `bk-defop'.")
 `bk-default-order' and execute the resulting code."
   (declare (indent 1))
   (let* ((alist (append `((:name ,name))
-                        (bk--construct-alist args)))
-         (order (bk--normalize-order bk-default-order))
-         (difference (seq-difference (seq-map (lambda (pair) (car pair)) alist)
-                                     (cons :name (bk--get-active-args order)))))
-    (unless (null difference)
-      (error "Superfluous arguments in block: %s" difference))
-    `(bk-blk ,name ,@(bk--expand-order order alist))))
+                        ;; (bk--construct-alist args)
+                        ))
+         (order (bk--normalize-order bk-default-order)
+                ;; '((set :name :package nil) (produce (:straight :package) straight) (produce (:after :package) after) (produce :custom custom) (produce :hook hook) (produce :bind bind) (produce :bind* bind*) (produce :init code) (rproduce (:defer :package) defer ((produce (:require :package) require) (produce :load load) (produce :config code) (produce :start start))))
+                )
+         ;; (difference (seq-difference (seq-map (lambda (pair) (car pair)) alist)
+         ;;                             (cons :name (bk--get-active-args order))))
+         )
+    ;; (unless (null difference)
+    ;;   (error "Superfluous arguments in block `%s': %s" name difference))
+    `(progn ,@(bk--expand-order order alist))))
 
 (defmacro bk-defop (name arglist body)
   "Define an operator named NAME with ARGLIST as its arguments.
@@ -87,7 +91,7 @@ return any expression."
   (let ((expansion (bk--handle-produce-internal op from alist)))
     (unless (and (listp expansion) (eq (car expansion) 'progn))
       (error "All operations must return a quoted `progn' sexp: %s" op))
-    `(bk-op ,op ,from ,@(cdr expansion))))
+    `(progn ,@(cdr expansion))))
 
 (defun bk--handle-rproduce (op from rest alist)
   (progn
@@ -95,7 +99,7 @@ return any expression."
            (bk--handle-produce-internal
             op from alist
             (bk--expand-order rest (copy-alist alist)))))
-      `(bk-op ,op ,from ,expansion))))
+      `(progn ,@expansion))))
 
 (defun bk--handle-produce-internal (op from alist &optional next)
   (let* ((operator
@@ -111,10 +115,13 @@ return any expression."
         ;; (condition-case nil
         ;;     (cl-destructuring-bind ,arglist ',args)
         ;;   (error (error "Incorrect argument structure for operation `%s'. Wanted: %s Got: %s" ',op ',arglist ',args)))
-        (condition-case err
-            (cl-destructuring-bind ,(cons 'next arglist) ',(cons next args)
-              ,body)
-          (error (error "Error while expanding `%s' with `%s': %s" ',op ',args err)))))))
+        (cl-destructuring-bind ,(cons 'next arglist) ',(cons next args)
+          ,body)
+        ;; (condition-case err
+        ;;     (cl-destructuring-bind ,(cons 'next arglist) ',(cons next args)
+        ;;       ,body)
+        ;;   (error (error "Error while expanding `%s' with `%s': %s" ',op ',args err)))
+        ))))
 
 (defun bk--construct-alist (args)
   (let (result current)
@@ -136,18 +143,23 @@ return any expression."
 
 (defmacro bk-blk (name &rest body)
   (declare (indent 1))
-  `(condition-case-unless-debug err
-       (prog1 ',name ,@body)
-     (error (display-warning
-             ',(intern (format "bk-block/%s" name))
-             (format "%s" (cadr err))
-             :error))))
+  `(prog1 ',name
+     ,@body)
+  ;; `(condition-case-unless-debug err
+  ;;      (prog1 ',name ,@body)
+  ;;    (error (display-warning
+  ;;            ',(intern (format "bk-block/%s" name))
+  ;;            (format "%s" (cadr err))
+  ;;            :error)))
+  )
 
 (defmacro bk-op (name args &rest body)
   (declare (indent 2))
-  `(condition-case err
-       (progn ,@body)
-     (error (error "In operation `%s' with args `%s': %s" ',name ',args err))))
+  `(progn ,@body)
+  ;; `(condition-case err
+  ;;      (progn ,@body)
+  ;;    (error (error "In operation `%s' with args `%s': %s" ',name ',args err)))
+  )
 
 ;;;; End:
 
