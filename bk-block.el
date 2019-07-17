@@ -6,6 +6,7 @@
 
 (require 'bk-block-core)
 (require 'fi-config)
+(require 'leaf)
 
 ;;; Code:
 
@@ -24,10 +25,16 @@
           (code :config)
           (start :start))))
 
+(bk-defop defer ((&optional pred) (&optional package))
+  (if (not pred)
+      next
+    `((with-eval-after-load ',package
+        ,@next))))
+
 (bk-defop straight ((&rest packages) (&optional default))
   `(progn ,@(seq-map
              (lambda (package)
-               '(straight-use-package
+               `(straight-use-package
                  ',(if (eq t package)
                        default
                      package)))
@@ -37,77 +44,65 @@
   `(progn
      (leaf-keys ,keys)))
 
-(deftransition bind* (&optional keys)
+(bk-defop bind* (&optional keys)
   `(progn
      (leaf-keys* ,keys)))
 
-(deftransition after ((&rest files) (&optional package))
+(bk-defop after ((&rest files) (&optional package))
   `(progn
      ,@(seq-map
         (lambda (it)
           `(with-eval-after-load ',it
-             (require ,package)))
+             (require ',package)))
         files)))
 
-(deftransition config :config (&rest body)
-  ,@body)
+(bk-defop code (&rest body)
+  `(progn ,@body))
 
-(deftransition init :init (&rest body)
-  ,@body)
+(bk-defop start (&rest functions)
+  `(progn
+     ,@(seq-map
+        (lambda (it)
+          `(,it))
+        functions)))
 
-(deftransition start :start (&rest functions)
-  ,@(mapcar
-     (lambda (it)
-       `(,it))
-     functions))
+(bk-defop require ((&rest packages) (&optional default))
+  `(progn
+     ,@(seq-map
+        (lambda (it)
+          `(require ',(if (eq it t)
+                          default
+                        it)))
+        packages)))
 
-(deftransition require :require (&rest packages)
-  ,@(mapcar
-     (lambda (it)
-       `(require ',it))
-     packages))
+(bk-defop load (&rest files)
+  `(progn
+     ,@(mapcar
+        (lambda (it)
+          `(load ,(expand-file-name it user-emacs-directory)))
+        files)))
 
-(deftransition load :load (&rest files)
-  ,@(mapcar
-     (lambda (it)
-       `(load ,(expand-file-name it user-emacs-directory)))
-     files))
+(bk-defop custom (&rest pairs)
+  `(progn
+     ,@(mapcar
+        (lambda (it)
+          `(fi-csetq ,(car it) ,(cdr it)))
+        pairs)))
 
-(deftransition custom :custom (&rest pairs) ;; (&whole pairs &rest (symbol . value))
-  ,@(mapcar
-     (lambda (it)
-       `(fi-csetq ,(car it) ,(cdr it)))
-     pairs))
-
-(deftransition hook :hook (&rest hooks) ;; (&whole hooks &rest (hook . function))
-  ,@(mapcar
-     (lambda (pair)
-       (cl-destructuring-bind (hook . function)
-           pair
-         (if (listp hook)
-             (cons 'progn
-                   (mapcar
-                    (lambda (hook)
-                      `(add-hook ',hook ',function))
-                    hook))
-           `(add-hook ',hook ',function))))
-     hooks))
-
-;; (pp-macroexpand-expression
-;;  (quote
-;;   (bk-block company
-;;     :straight nil
-;;     :after emacs
-;;     :hook
-;;     ((baz foo) . bar)
-;;     (boo . baz)
-;;     :custom
-;;     (foo . "foo")
-;;     (foo . bar)
-;;     (bar . "baz")
-;;     :init
-;;     (error "foo")
-;;     :defer t)))
+(bk-defop hook (&rest hooks) ;; (&whole hooks &rest (hook . function))
+  `(progn
+     ,@(mapcar
+        (lambda (pair)
+          (cl-destructuring-bind (hook . function)
+              pair
+            (if (listp hook)
+                (cons 'progn
+                      (mapcar
+                       (lambda (hook)
+                         `(add-hook ',hook ',function))
+                       hook))
+              `(add-hook ',hook ',function))))
+        hooks)))
 
 (provide 'bk-block)
 
