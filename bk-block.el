@@ -9,50 +9,45 @@
 
 ;;; Code:
 
-(setq bk-transition-order
-      '(auto-package
-        straight
-        after
-        custom
-        hook
-        bind
-        bind*
-        init
-        defer
-        require
-        load
-        start
-        config))
+(setq bk-default-order
+      '((>? :name :package)
+        (straight (:straight :package))
+        (after (:after :package))
+        (custom :custom)
+        (hook :hook)
+        (bind :bind)
+        (bind* :bind*)
+        (code :init)
+        (defer (:defer :package)
+          (require (:require :package))
+          (load :load)
+          (code :config)
+          (start :start))))
 
-(deftransitionb auto-package :name (name)
-  (lexical-let ((package ',name))
-    ,@next))
+(bk-defop straight ((&rest packages) (&optional default))
+  `(progn ,@(seq-map
+             (lambda (package)
+               '(straight-use-package
+                 ',(if (eq t package)
+                       default
+                     package)))
+             packages)))
 
-(deftransitionb defer :defer (&optional (defer nil))
-  ,@(if defer
-	`((with-eval-after-load package
-            ,@next))
-      next))
+(bk-defop bind (&optional keys)
+  `(progn
+     (leaf-keys ,keys)))
 
-(deftransition straight :straight (&rest packages)
-  ,@(mapcar (lambda (it)
-              (cond ((eq it t)
-                     `(straight-use-package package))
-                    (it
-                     `(straight-use-package ',it))))
-            packages))
+(deftransition bind* (&optional keys)
+  `(progn
+     (leaf-keys* ,keys)))
 
-(deftransition bind :bind (&optional keys)
-  (leaf-keys ,keys))
-
-(deftransition bind* :bind* (&optional keys)
-  (leaf-keys* ,keys))
-
-(deftransition after :after (&rest files)
-  ,@(mapcar (lambda (it)
-              `(with-eval-after-load ',it
-                 (require package)))
-            files))
+(deftransition after ((&rest files) (&optional package))
+  `(progn
+     ,@(seq-map
+        (lambda (it)
+          `(with-eval-after-load ',it
+             (require ,package)))
+        files)))
 
 (deftransition config :config (&rest body)
   ,@body)

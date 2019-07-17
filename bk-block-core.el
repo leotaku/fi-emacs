@@ -3,110 +3,118 @@
 ;;; Commentary:
 
 ;; TODO: support multiple same keywords in block by appending
-;; TODO: allow reading multiple vars in deftransition
-;; TODO: remove deftransition argument and put it in order instead
+;; DONE: allow reading multiple vars in deftransition
+;; DONE: remove deftransition argument and put it in order instead
 ;; TODO: allow escaping , comma in blocks
 
 (require 'cl)
 (require 'seq)
+(require 'pcase)
 
 ;;; Code:
 
 ;;;; Variables
 
-(defconst bk--transition-alist '()
-  "Internal alist used by bk for symbol lookup.")
+(defconst bk-default-order '()
+  "List used by to determine the order of operations in a block.")
 
-(defconst bk-transition-order '()
-  "List used by bk to determine the order of transitions.")
+(defconst bk--operator-alist '()
+  "Internal list used for symbol lookup.
+Generally only altered by `bk-defop'.")
 
-(defconst bk-current-block nil
-  "Variable used by bk to track the currently active block.")
-
-(defconst bk-current-transition nil
-  "Variable used by bk to track the currently active transition.")
-
-(defconst bk--quoted-next ',@next)
-
-;;;; User interface and error handling:
+;;;; UI
 
 (defmacro bk-block (name &rest args)
+  "Expand ARGS and NAME bound to the arg `:name' according to
+`bk-default-order' and execute the resulting code."
   (declare (indent 1))
-  (let* ((alist (append (bk--construct-alist args) `((:name ,name))))
-         (unevaluated
-          (bk--run-transitions name bk-transition-order alist)))
-    `(bk-internal-block ,name ,@unevaluated)))
+  (let* ((alist (append `((:name ,name))
+                        (bk--construct-alist args)))
+         (order (bk--normalize-order bk-default-order))
+         (difference (seq-difference (seq-map (lambda (pair) (car pair)) alist)
+                                     (cons :name (bk--get-active-args order)))))
+    (unless (null difference)
+      (error "Superfluous arguments in block: %s" difference))
+    `(bk-blk ,name ,@(bk--expand-order order alist))))
 
-(defmacro bk-internal-block (name &rest body)
-  (declare (indent 1))
-  `(lexical-let ((bk-current-block ',name)
-                 (bk-current-transition 'entry))
-     (condition-case-unless-debug err
-         (prog1 ',name ,@body)
-       (error (display-warning
-               (intern (format "bk-block/%s" bk-current-block))
-               (format "In transition %s: %s" bk-current-transition err)
-               :error)))))
+(defmacro bk-defop (name arglist body)
+  "Define an operator named NAME with ARGLIST as its arguments.
+Nonbranching operators must return a progn, branching operators may
+return any expression."
+  (declare (indent defun))
+  `(prog1 ',name
+     (setf (alist-get ',name bk--operator-alist)
+           '(,arglist ,body))))
 
-(defmacro bk-branch (name &rest body)
-  (declare (indent 1))
-  `(progn
-     (setq bk-current-transition ',name)
-     ,@body))
+;;;; Expansion
 
-(defalias 'bk-leaf 'bk-branch)
+(defun bk--normalize-order (order)
+  (seq-map
+   (lambda (entry)
+     (pcase entry
+       (`(>? ,n1 ,n2 . ,rest) (list 'set n1 n2 rest))
+       (`(,fun ,n1) (list 'produce n1 fun))
+       (`(,fun ,n1 . ,rest) (list 'rproduce n1 fun (bk--normalize-order rest)))))
+   order))
 
-(defmacro deftransition (name &optional arg arglist &rest body)
-  `(add-to-list
-    'bk--transition-alist
-    (cons ',name (cons ',arg (transition ,arglist (bk-leaf ,name ,@body)
-                                         ,bk--quoted-next)))))
-(defmacro deftransitionb (name &optional arg arglist &rest body)
-  `(add-to-list
-    'bk--transition-alist
-    (cons ',name (cons ',arg (transition ,arglist (bk-branch ,name ,@body))))))
+(defun bk--get-active-args (order)
+  (seq-mapcat
+   (lambda (entry)
+     (case (car entry)
+       ('set (bk--raise (cadr entry)))
+       ('produce (bk--raise (cadr entry)))
+       ('rproduce (append (bk--raise (cadr entry)) (bk--get-active-args (cadddr entry))))))
+   order))
 
-;;;; Transition system:
+(defun bk--expand-order (order alist)
+  (let ((result nil))
+    (seq-do
+     (lambda (entry)
+       (case (car entry)
+         ('set (setq alist (bk--handle-set (cadr entry) (caddr entry) alist)))
+         ('produce (push (bk--handle-produce (caddr entry) (cadr entry) alist) result))
+         ('rproduce (push (bk--handle-rproduce (caddr entry) (cadr entry) (cadddr entry) alist) result))))
+     order)
+    (nreverse result)))
 
-(defmacro transition (arglist &rest body)
-  (declare (indent 1))
-  `(lambda (args)
-     ;; (condition-case-unless-debug nil
-     ;;     (cl-destructuring-bind ,arglist args)
-     ;;   (error (error "Wrong number of arguments in transition. Arglist: %s" ',arglist)))
-     (lexical-let ((args args))
-       (lambda (next)
-         (bk--expand-macro-body ,arglist args
-           ,body)))))
+(defun bk--handle-set (from to alist)
+  (let ((val (alist-get from alist)))
+    (when val
+      (setf (alist-get to alist) val))
+    alist))
 
-(defun bk--run-transitions (block t-names value-alist &optional transition-alist)
-  (let* ((transition-alist (or transition-alist bk--transition-alist))
-         (transitions (mapcar
-                       (lambda (t-name)
-                         (let* ((t-pair (or (alist-get t-name transition-alist)
-                                            (error "Fuck %s" t-name)))
-                                (trans (cdr t-pair))
-                                (args (if (car t-pair)
-                                          (alist-get (car t-pair) value-alist)
-                                        nil)))
-                           (condition-case-unless-debug err
-                               (cons t-name (funcall trans args))
-                             (error (error "This shouldn't be possible: %s" err)))))
-                       t-names)))
-    (seq-reduce
-     (lambda (acc it)
-       (condition-case-unless-debug err
-           (funcall (cdr it) acc)
-         (error (error "Error during expansion of transition `%s' in block `%s': %s" (car it) block err))))
-     (nreverse transitions)
-     nil)))
+(defun bk--handle-produce (op from alist)
+  (let ((expansion (bk--handle-produce-internal op from alist)))
+    (unless (and (listp expansion) (eq (car expansion) 'progn))
+      (error "All operations must return a quoted `progn' sexp: %s" op))
+    `(bk-op ,op ,from ,@(cdr expansion))))
 
-;;;; Implementation:
+(defun bk--handle-rproduce (op from rest alist)
+  (progn
+    (let ((expansion
+           (bk--handle-produce-internal
+            op from alist
+            (bk--expand-order rest (copy-alist alist)))))
+      `(bk-op ,op ,from ,expansion))))
 
-(defmacro bk--expand-macro-body (arglist args body)
-  (declare (indent 2))
-  `(cl-destructuring-bind ,arglist ,args
-     ,(cdr (backquote-process body))))
+(defun bk--handle-produce-internal (op from alist &optional next)
+  (let* ((operator
+          (or (alist-get op bk--operator-alist)
+              (error "Invalid operator: %s" op)))
+         (arglist (car operator))
+         (body (cadr operator))
+         (args (if (listp from)
+                   (seq-map (lambda (it) (alist-get it alist)) from)
+                 (alist-get from alist))))
+    (eval
+     `(progn
+        ;; (condition-case nil
+        ;;     (cl-destructuring-bind ,arglist ',args)
+        ;;   (error (error "Incorrect argument structure for operation `%s'. Wanted: %s Got: %s" ',op ',arglist ',args)))
+        (condition-case err
+            (cl-destructuring-bind ,(cons 'next arglist) ',(cons next args)
+              ,body)
+          (error (error "Error while expanding `%s' with `%s': %s" ',op ',args err)))))))
 
 (defun bk--construct-alist (args)
   (let (result current)
@@ -118,6 +126,28 @@
         (push it current)))
     (push (nreverse current) result)
     (cdr (nreverse result))))
+
+(defun bk--raise (item)
+  (if (listp item)
+      item
+    (list item)))
+
+;;;; Runtime
+
+(defmacro bk-blk (name &rest body)
+  (declare (indent 1))
+  `(condition-case-unless-debug err
+       (prog1 ',name ,@body)
+     (error (display-warning
+             ',(intern (format "bk-block/%s" name))
+             (format "%s" (cadr err))
+             :error))))
+
+(defmacro bk-op (name args &rest body)
+  (declare (indent 2))
+  `(condition-case err
+       (progn ,@body)
+     (error (error "In operation `%s' with args `%s': %s" ',name ',args err))))
 
 ;;;; End:
 
