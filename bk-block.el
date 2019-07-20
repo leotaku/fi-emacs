@@ -1,108 +1,147 @@
-;;; bk-block.el --- flexible blocks for your init file
+;;; bk-block.el --- block-based init management based on sd.el
 
+;; Author: Leo Gaskin <leo.gaskin@brg-feldkirchen.at>
+;; Created: 19 July 2019
+;; Homepage: https://github.com/leotaku/fi-emacs
+;; Keywords: fi-emacs, bk, bk-block
+;; Package-Requires: ((emacs "25.1"))
+
+;; This file is not part of GNU Emacs.
+
+;; This program is free software: you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 ;; 
 
-(require 'bk-block-core)
+(require 'sd)
 (require 'fi-config)
-(require 'leaf)
 
 ;;; Code:
 
-(setq bk-default-order
-      '((>? :name :package)
-        (straight (:straight :package))
-        (after (:after :package))
-        (custom :custom)
-        (hook :hook)
-        (bind :bind)
-        (bind* :bind*)
-        (code :init)
-        (defer (:defer :package)
-          (require (:require :package))
-          (load :load)
-          (code :config)
-          (start :start))))
+(defconst bk-expansion-alist
+  '((:straight  d + pre `(straight-use-package ',~))
+    (:init      - + pre ~)
+    (:load      * + pre `(load (expand-file-name ,~ user-emacs-directory)))
+    (:load-at   * + pst `(load (expand-file-name ,~ user-emacs-directory)))
+    (:config    - + pst ~)
+    (:wanted-by * = wnt ~)
+    (:requires  * = req ~)
+    (:start     * + pst `(,~))
+    (:custom    * + pre `(fi-csetq ,(car ~) ,(cdr ~)))
+    (:bind      * + pre `(leaf-keys ,~))
+    (:bind*     * + pre `(leaf-keys* ,~)))
+  "An alist mapping every symbol to a bk-generation expression.")
 
-(bk-defop defer ((&optional pred) (&optional package))
-  (if (not pred)
-      next
-    `((with-eval-after-load ',package
-        ,@next))))
+(defun bk-gen-expansion-case (entry)
+  (let ((key (nth 0 entry))
+        (applicator (nth 1 entry))
+        (setter (nth 2 entry))
+        (listvar (nth 3 entry))
+        (expr (nth 4 entry)))
+    `((eq key ',key)
+      (list
+       ',setter
+       ',listvar
+       ,(cond
+         ((eq applicator '-)
+          expr)
+         ((eq applicator '*)
+          `(mapcar
+            (lambda (~)
+              ,expr)
+            ~))
+         ((eq applicator 'd)
+          `(mapcar
+            (lambda (~)
+              (when (eq t ~)
+                (set '~ default))
+              ,expr)
+            ~)))))))
 
-(bk-defop straight ((&rest packages) (&optional default))
-  `(progn ,@(seq-map
-             (lambda (package)
-               `(straight-use-package
-                 ',(if (eq t package)
-                       default
-                     package)))
-             packages)))
+(defun bk-gen-expansions (list)
+  `(lambda (default pair)
+     (let ((key (car pair))
+           (~ (cdr pair)))
+       (cond
+        ,@(seq-map
+           'bk-gen-expansion-case
+           list)
+        (t
+         (warn "Unrecognized keyword `%s' in `%s'" key default))))))
 
-(bk-defop bind (&optional keys)
-  `(progn
-     (leaf-keys ,keys)))
+(defun bk-gen-compiled (list)
+  (byte-compile (bk-gen-expansions list)))
 
-(bk-defop bind* (&optional keys)
-  `(progn
-     (leaf-keys* ,keys)))
+(prog1 "Compile"
+  (setq bk--expansion (bk-gen-compiled bk-expansion-alist)))
 
-(bk-defop after ((&rest files) (&optional package))
-  `(progn
-     ,@(seq-map
-        (lambda (it)
-          `(with-eval-after-load ',it
-             (require ',package)))
-        files)))
+(defmacro bk-block0 (name &rest args)
+  (declare (indent 1))
+  (let ((alist (bk--construct-alist args))
+        pre pst req wnt)
+    (dolist (entry alist)
+      (let* ((triple (funcall bk--expansion name entry))
+             (setter (nth 0 triple))
+             (symbol (nth 1 triple))
+             (value (nth 2 triple)))
+        (set symbol
+             (nconc
+              (when (eq setter '+)
+                (symbol-value symbol))
+              value))))
+    `(prog1 ',name
+       ,@pre
+       ,(if sd-in-unit-setup-phase
+            `(sd-register-unit
+              ',name
+              '(progn ,@pst)
+              ',req
+              ',wnt)
+          `(prog1
+               (warn
+                "`%s' block run after startup without dependency checks." ',name)
+             (require ',name nil t)
+             ,@pst)))))
 
-(bk-defop code (&rest body)
-  `(progn ,@body))
+(defmacro bk-block (name &rest args)
+  (declare (indent 1))
+  `(bk-block0 ,name
+     :wanted-by gui-target
+     ,@args))
 
-(bk-defop start (&rest functions)
-  `(progn
-     ,@(seq-map
-        (lambda (it)
-          `(,it))
-        functions)))
+(defmacro bk-block* (name &rest args)
+  (declare (indent 1))
+  `(bk-block0 ,name
+     :wanted-by init-target
+     ,@args))
 
-(bk-defop require ((&rest packages) (&optional default))
-  `(progn
-     ,@(seq-map
-        (lambda (it)
-          `(require ',(if (eq it t)
-                          default
-                        it)))
-        packages)))
+(defun bk--construct-alist (args)
+  (let (result current)
+    (dolist (it args)
+      (if (and (symbolp it) (string-prefix-p ":" (symbol-name it)))
+          (progn
+            (push (nreverse current) result)
+            (setq current (list it)))
+        (push it current)))
+    (push (nreverse current) result)
+    (cdr (nreverse result))))
 
-(bk-defop load (&rest files)
-  `(progn
-     ,@(mapcar
-        (lambda (it)
-          `(load ,(expand-file-name it user-emacs-directory)))
-        files)))
-
-(bk-defop custom (&rest pairs)
-  `(progn
-     ,@(mapcar
-        (lambda (it)
-          `(fi-csetq ,(car it) ,(cdr it)))
-        pairs)))
-
-(bk-defop hook (&rest hooks) ;; (&whole hooks &rest (hook . function))
-  `(progn
-     ,@(mapcar
-        (lambda (pair)
-          (cl-destructuring-bind (hook . function)
-              pair
-            (if (listp hook)
-                (cons 'progn
-                      (mapcar
-                       (lambda (hook)
-                         `(add-hook ',hook ',function))
-                       hook))
-              `(add-hook ',hook ',function))))
-        hooks)))
+(defconst bk-font-lock-keywords
+  '(("(\\(bk-block.?\\)\\_>[ \t']*\\(\\(?:\\sw\\|\\s_\\)+\\)?"
+     (1 font-lock-keyword-face)
+     (2 font-lock-constant-face nil t))))
+(font-lock-add-keywords 'emacs-lisp-mode bk-font-lock-keywords)
 
 (provide 'bk-block)
 
