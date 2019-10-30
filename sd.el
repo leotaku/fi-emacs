@@ -32,7 +32,7 @@
   "List used for unit description lookup.
 Every entry is a unit object, see `sd-make-unit' for documentation.")
 
-(defconst sd-in-unit-setup-phase t
+(defconst sd--in-unit-setup-phase t
   "If true, new units may be defined.")
 
 (defsubst sd-make-unit (name)
@@ -79,67 +79,86 @@ This function acts as a generalized variable."
                (listp form)
                (listp wanted-by))
     (error "Wrong type argument to register-unit"))
-  (unless sd-in-unit-setup-phase
+  (unless sd--in-unit-setup-phase
     (error "Registering new units after a target has been reached is illegal"))
   (let ((unit (assq name sd-unit-list)))
     (when (null unit)
       (setq unit (sd-make-unit name)))
     ;; wanted-by is handled by the dep system
-    (when (eq (sd-unit-state unit) t)
-      (prog1 t
-        (setf (sd-unit-dependencies unit)
-              (nconc requires
-                     (sd-unit-dependencies unit)))
-        (setf (sd-unit-form unit) form)
-        (setf (sd-unit-state unit) nil)
-        (sd--destructive-set-unit unit)
-        (dolist (wants-name wanted-by)
-          (sd--add-unit-dependency wants-name name))))))
+    (when (eq (sd-unit-state unit) 0)
+      (setf (sd-unit-dependencies unit)
+            (nconc requires
+                   (sd-unit-dependencies unit)))
+      (setf (sd-unit-form unit) form)
+      (setf (sd-unit-state unit) 1)
+      (sd--destructive-set-unit unit)
+      (dolist (wants-name wanted-by)
+        (sd--add-unit-dependency wants-name name)))))
 
-(defun sd-reach-unit (name)
-  (setq sd-in-unit-setup-phase nil)
+(defun sd--reach-unit (name)
+  (setq sd--in-unit-setup-phase nil)
   (let* ((unit (assq name sd-unit-list))
-         (state (if unit (sd-unit-state unit) t)))
+         (state (if unit (sd-unit-state unit) 0)))
     (cond
-     ((null state)
+     ;; case: unit registered
+     ((eq state 1)
+      ;; protect against recursion
+      ;; possible performance loss
+      (setf (sd-unit-state unit) (list name 'recursive))
+      (sd--destructive-set-unit unit)
       (let (errors rec-error)
         (dolist (dep (sd-unit-dependencies unit))
-          (if (eq dep name)
-              (push (list name 'recursive) errors)
-            (let ((err (sd-reach-unit dep)))
-              (when err
-                (push err errors)))))
-        ;; ad-hoc feature integration
-        (require name nil t)
+          (let ((err (sd--reach-unit dep)))
+            (when (listp err)
+              (push err errors))))
+        ;; REMOVE: ad-hoc feature integration
+        ;; (require name nil t)
         (setf (sd-unit-state unit)
               (if errors
                   (cons name (cons 'dependencies errors))
-                (let ((eval-error (condition-case err
+                (let ((eval-error (condition-case-unless-debug err
                                       (prog1 nil
                                         (eval (sd-unit-form unit) nil))
                                     (error err))))
                   (if eval-error
                       (cons name (cons 'eval eval-error))
-                    'done)))))
+                    2)))))
       (sd--destructive-set-unit unit)
-      (if (eq 'done (sd-unit-state unit))
-          nil
-        (sd-unit-state unit)))
-     ((eq state 'done)
-      nil)
+      (sd-unit-state unit))
+     ;; case: unit already reached
+     ((eq state 2)
+      3)
+     ;; case: unit already errored
      ((listp state)
-      state)
+      (if (eq 'recursive (cadr state))
+          state
+        4))
+     ;; case: unit not existent or not registered
      (t
       (unless unit
         (setq unit (sd-make-unit name)))
-      (if (require name nil t)
-          (progn
-            (setf (sd-unit-state unit) nil)
-            (sd--destructive-set-unit unit)
-            (sd-reach-unit name))
-        (setf (sd-unit-state unit) (list name 'noexist))
-        (sd--destructive-set-unit unit)
-        (sd-unit-state unit))))))
+      (let* ((str (symbol-name name))
+             (is-special (eq (compare-strings
+                              str 0 1
+                              "." 0 1)
+                             t)))
+        ;; subcase: unit is a special feature (leading dot)
+        (if is-special
+            (if (require (intern (substring str 1)) nil t)
+                ;; succeded require
+                (progn
+                  (setf (sd-unit-state unit) 1)
+                  (sd--destructive-set-unit unit)
+                  (sd--reach-unit name))
+              ;; failed require
+              (setf (sd-unit-state unit)
+                    (list name 'eval (format "Feature `%s' could not be loaded" str)))
+              (sd--destructive-set-unit unit)
+              (sd-unit-state unit))
+          ;; not special
+          (setf (sd-unit-state unit) (list name 'noexist))
+          (sd--destructive-set-unit unit)
+          (sd-unit-state unit)))))))
 
 (defsubst sd--add-unit-dependency (name dep-name)
   (let ((unit (assq name sd-unit-list)))
@@ -154,30 +173,45 @@ This function acts as a generalized variable."
   (setq sd-unit-list (assq-delete-all (sd-unit-name unit) sd-unit-list))
   (push unit sd-unit-list))
 
-(defun sd-message-error (err &optional prefix)
-  (when err
-    (let ((unit (car err))
-          (reason (cadr err))
-          (context (cddr err))
-          (prefix (or prefix 0)))
-      (cond
-       ((eq reason 'eval)
-        (message "%s:`%s' failed because an error occurred: %s" prefix unit context))
-       ((eq reason 'noexist)
-        (message "%s:`%s' failed because it does not exist." prefix unit))
-       ((eq reason 'recursive)
-        (message "%s:`%s' failed because it depends on itself." prefix unit))
-       ((eq reason 'dependencies)
-        (message "%s:`%s' failed because:" prefix unit)
-        (mapc (lambda (err) (sd-message-error err (1+ prefix)))
-              context))))))
+(defun sd--format-error (state &optional prefix)
+  "Format the error ERR returned by `sd--reach-unit' in an user-readable manner.
+Optional argument PREFIX should be used to describe the recursion level at which this error has occured."
+  (let ((unit (car state))
+        (reason (cadr state))
+        (context (cddr state))
+        (prefix (or prefix 0)))
+    (cond
+     ((eq reason 'eval)
+      (format "%s:`%s' failed because an error occurred: %s" prefix unit context))
+     ((eq reason 'noexist)
+      (format "%s:`%s' failed because it does not exist." prefix unit))
+     ((eq reason 'recursive)
+      (format "%s:`%s' failed because it depends on itself." prefix unit))
+     ((eq reason 'dependencies)
+      (concat (format "%s:`%s' failed because:\n" prefix unit)
+              (mapconcat
+               (lambda (state)
+                 (sd--format-error state (1+ prefix)))
+               context "\n"))))))
 
 (defun sd-reach-target (name)
-  (let ((err (sd-reach-unit name)))
-    (if (not err)
-        (message "Target `%s' succeded." name)
-      (message "Target `%s' failed because:" name)
-      (sd-message-error err))))
+  "Manually reach the `sd-unit' with the name NAME.
+
+Returns an user-readable error when the unit has errored, t if it
+has newly succeded and nil if it has succeded or errored before."
+  (let ((state (sd--reach-unit name)))
+    (cond
+     ;; case: unit newly errored
+     ((listp state)
+      (sd--format-error state))
+     ((eq state 2)
+      t)
+     ;; case: unit already succeded/errored
+     ((or (eq state 3)
+          (eq state 4))
+      nil)
+     ((t
+       (error "This should be unreachable: %s" state))))))
 
 (provide 'sd)
 
