@@ -24,6 +24,10 @@
 ;;; Commentary:
 ;; 
 
+;; TODO: Make API better
+;; TODO: proper format for success/failure
+;; TODO: non-numerical returns from `sd--reach-unit'
+
 (require 'gv)
 
 ;;; Code:
@@ -36,31 +40,31 @@ Every entry is a unit object, see `sd-make-unit' for documentation.")
   "If true, new units may be defined.")
 
 (defsubst sd-make-unit (name)
-  "Simplified constructor for `sd-unit' object.
+  "Simplified constructor for `sd-unit' objects.
 
-A `sd-unit' object is a cons list with the following structure:
-\(NAME state form . dependencies)
-where:
-\(symbolp NAME)
-OUTDATED: \(or (boolp state) (listp state))
-\(listp form)
-\(and (listp dependencies) (all (mapcar 'symbolp dependencies)))"
-  (cons name (cons t (cons nil nil))))
+SD-UNIT FORMAT:
+  \(NAME state form . dependencies)
+WHERE:
+  \(symbolp NAME)
+  \(or (memq state '(0 1 2)) (listp state))
+  \(listp form)
+  \(and (listp dependencies) (all (mapcar 'symbolp dependencies)))"
+  (cons name (cons 0 (cons nil nil))))
 
 (defsubst sd-unit-name (unit)
-  "Access slot \"unit\" of `sd-unit' object.
+  "Access slot UNIT of UNIT object.
 This function acts as a generalized variable."
   (car unit))
 (defsubst sd-unit-state (unit)
-  "Access slot \"state\" of `sd-unit' object.
+  "Access slot STATE of UNIT object.
 This function acts as a generalized variable."
   (cadr unit))
 (defsubst sd-unit-form (unit)
-  "Access slot \"form\" of `sd-unit' object.
+  "Access slot FORM of UNIT object.
 This function acts as a generalized variable."
   (caddr unit))
 (defsubst sd-unit-dependencies (unit)
-  "Access slot \"dependencies\" of `sd-unit' object.
+  "Access slot DEPENDENCIES of UNIT object.
 This function acts as a generalized variable."
   (cdddr unit))
 
@@ -74,6 +78,11 @@ This function acts as a generalized variable."
   `(setf (cdddr ,item) ,value))
 
 (defun sd-register-unit (name &optional form requires wanted-by)
+  "Define a UNIT named NAME with execution form FORM, requiring
+the units REQUIRES, wanted by the units WANTED-BY.
+
+This function will error if other units have already been started
+when it is run."
   (unless (and (symbolp name)
                (listp requires)
                (listp form)
@@ -174,8 +183,9 @@ This function acts as a generalized variable."
   (push unit sd-unit-list))
 
 (defun sd--format-error (state &optional prefix)
-  "Format the error ERR returned by `sd--reach-unit' in an user-readable manner.
-Optional argument PREFIX should be used to describe the recursion level at which this error has occured."
+  "Format the error STATE returned by `sd--reach-unit' in an user-readable manner.
+Optional argument PREFIX should be used to describe the recursion
+level at which this error has occured."
   (let ((unit (car state))
         (reason (cadr state))
         (context (cddr state))
@@ -195,7 +205,7 @@ Optional argument PREFIX should be used to describe the recursion level at which
                context "\n"))))))
 
 (defun sd-reach-target (name)
-  "Manually reach the `sd-unit' with the name NAME.
+  "Manually reach the unit named NAME.
 
 Returns an user-readable error when the unit has errored, t if it
 has newly succeded and nil if it has succeded or errored before."
