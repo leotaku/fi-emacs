@@ -55,4 +55,10 @@ KEY should be a key sequence in internal Emacs notation."
         (fi-insert-at list n item)
       list)))
 
+(defun fi-call-silent (fun &rest args)
+  "Call FUN with ARGS, wrapped in a `inhibit-message` expression.
+Intended mainly for advising existing functions."
+  (let ((inhibit-message t))
+    (apply fun args)))
+
 (provide 'fi-subr)
