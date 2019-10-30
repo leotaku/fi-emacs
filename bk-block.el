@@ -32,11 +32,12 @@
 (defconst bk-expansion-alist
   '((:straight  d + pre `(straight-use-package ',~))
     (:init      - + pre ~)
-    (:load      * + pre `(load (expand-file-name ,~ user-emacs-directory)))
-    (:load-at   * + pst `(load (expand-file-name ,~ user-emacs-directory)))
+    (:load      * + pre `(load ,(expand-file-name ~ user-emacs-directory) nil t))
+    (:load-at   * + pst `(load ,(expand-file-name ~ user-emacs-directory) nil t))
     (:config    - + pst ~)
     (:wanted-by * = wnt ~)
-    (:requires  * = req ~)
+    (:requires  * + req ~)
+    (:hook      * + pst `(add-hook ',(car ~) ',(cdr ~)))
     (:start     * + pst `(,~))
     (:custom    * + pre `(fi-csetq ,(car ~) ,(cdr ~)))
     (:bind      * + pre `(leaf-keys ,~))
@@ -74,17 +75,34 @@
      (let ((key (car pair))
            (~ (cdr pair)))
        (cond
-        ,@(seq-map
+        ,@(mapcar
            'bk-gen-expansion-case
            list)
         (t
-         (warn "Unrecognized keyword `%s' in `%s'" key default))))))
+         (error "Unrecognized keyword `%s' in `%s'" key default))))))
+
+(defun bk--construct-alist (args)
+  (let (result current)
+    (dolist (it args)
+      (if (and (symbolp it) (string-prefix-p ":" (symbol-name it)))
+          (progn
+            (push (nreverse current) result)
+            (setq current (list it)))
+        (push it current)))
+    (push (nreverse current) result)
+    (cdr (nreverse result))))
 
 (defun bk-gen-compiled (list)
   (byte-compile (bk-gen-expansions list)))
 
-(prog1 "Compile"
+(prog1 "Compile expansion"
   (setq bk--expansion (bk-gen-compiled bk-expansion-alist)))
+
+(defun bk--warn (format-string &rest args)
+  (display-warning
+   'bk-block
+   (apply 'format format-string args)
+   :warning))
 
 (defmacro bk-block0 (name &rest args)
   (declare (indent 1))
@@ -101,17 +119,28 @@
                 (symbol-value symbol))
               value))))
     `(prog1 ',name
-       ,@pre
-       ,(if sd-in-unit-setup-phase
-            `(sd-register-unit
-              ',name
-              '(progn ,@pst)
-              ',req
-              ',wnt)
+       ,(if sd--in-unit-setup-phase
+            ;; case: actually setting up units
+            `(condition-case-unless-debug err
+                 (progn
+                   ,@pre
+                   (sd-register-unit
+                    ',name
+                    '(progn ,@pst)
+                    ',req
+                    ',wnt))
+               (error
+                (bk--warn "Error in block `%s' during setup: %s" ',name err)
+                (sd-register-unit
+                 ',name
+                 '(error "This unit could not be set up properly!")
+                 ',req
+                 ',wnt)))
+          ;; case: manually run
           `(prog1
-               (warn
+               (bk--warn
                 "`%s' block run after startup without dependency checks." ',name)
-             (require ',name nil t)
+             ,@pre
              ,@pst)))))
 
 (defmacro bk-block (name &rest args)
@@ -120,27 +149,46 @@
      :wanted-by gui-target
      ,@args))
 
-(defmacro bk-block* (name &rest args)
+(defmacro bk-block! (name &rest args)
   (declare (indent 1))
   `(bk-block0 ,name
      :wanted-by init-target
      ,@args))
 
-(defun bk--construct-alist (args)
-  (let (result current)
-    (dolist (it args)
-      (if (and (symbolp it) (string-prefix-p ":" (symbol-name it)))
-          (progn
-            (push (nreverse current) result)
-            (setq current (list it)))
-        (push it current)))
-    (push (nreverse current) result)
-    (cdr (nreverse result))))
+(defmacro bk-block* (name &rest args)
+  (declare (indent 1))
+  `(bk-block ,name
+     :requires ,(intern (concat "." (symbol-name name)))
+     ,@args))
+
+(defmacro bk-block!* (name &rest args)
+  (declare (indent 1))
+  `(bk-block! ,name
+     :requires ,(intern (concat "." (symbol-name name)))
+     ,@args))
+
+(defun bk-reach-target (unit-name)
+  "Try reaching the target UNIT-NAME.
+
+Displays warnings for all errors that have ocurred."
+  (let ((return (sd-reach-target unit-name)))
+    (cond
+     ((eq return t)
+      (message "Target `%s' succeded." unit-name))
+     ((eq return nil)
+      nil)
+     (t
+      (bk--warn "Target `%s' failed because:\n%s" unit-name return)))))
+
+(defalias 'bk-register-unit 'sd-register-unit
+  "Alias for `sd-register-unit' so no functions from the sd
+package need to be used directly.")
 
 (defconst bk-font-lock-keywords
-  '(("(\\(bk-block.?\\)\\_>[ \t']*\\(\\(?:\\sw\\|\\s_\\)+\\)?"
+  '(("(\\(bk-block[^ ]*\\)\\_>[ \t']*\\(\\(?:\\sw\\|\\s_\\)+\\)?"
      (1 font-lock-keyword-face)
      (2 font-lock-constant-face nil t))))
+
 (font-lock-add-keywords 'emacs-lisp-mode bk-font-lock-keywords)
 
 (provide 'bk-block)
