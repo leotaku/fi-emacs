@@ -231,12 +231,21 @@ Displays warnings for all errors that have ocurred."
   "Alias for `sd-register-unit' so no functions from the sd
 package need to be used directly.")
 
+;;;; Integrations:
+
 (defconst bk-font-lock-keywords
   '(("(\\(bk-block[^ ]*\\)\\_>[ \t']*\\(\\(?:\\sw\\|\\s_\\)+\\)?"
      (1 font-lock-keyword-face)
      (2 font-lock-constant-face nil t))))
 
-(font-lock-add-keywords 'emacs-lisp-mode bk-font-lock-keywords)
+(with-eval-after-load 'font-lock
+  (font-lock-add-keywords 'emacs-lisp-mode bk-font-lock-keywords))
+
+(with-eval-after-load 'lispy
+  (dolist (block '(bk-block bk-block! bk-block!* bk-block* bk-block0))
+    (push
+     (cons block 1)
+     (alist-get 'emacs-lisp-mode lispy-tag-arity))))
 
 (provide 'bk-block)
 
