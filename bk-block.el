@@ -30,7 +30,14 @@
 
 ;;; Code:
 
-(defconst bk-expansion-alist
+;;;; Variables:
+
+(defgroup bk-block nil
+  "Block-style init management based on sd.el"
+  :group 'lisp
+  :prefix "bk-")
+
+(defcustom bk-expansion-alist
   '((:straight  d + pre `(straight-use-package ',~))
     (:init      - + pre ~)
     (:load      * + pre `(load ,(expand-file-name ~ user-emacs-directory) nil t))
@@ -43,9 +50,35 @@
     (:custom    * + pre `(fi-csetq ,(car ~) ,(cdr ~)))
     (:bind      * + pre `(leaf-keys ,~))
     (:bind*     * + pre `(leaf-keys* ,~)))
-  "An alist mapping every symbol to a bk-generation expression.")
+  "An alist mapping every symbol to a bk-generation expression."
+  :group 'bk-block
+  :type '(alist :value-type
+                (list
+                 (radio (symbol *)
+                        (symbol -)
+                        (symbol d))
+                 (radio (symbol +)
+                        (symbol =))
+                 (radio (symbol pre)
+                        (symbol pst)
+                        (symbol req)
+                        (symbol wnt))
+                 sexp)))
 
-(defun bk-gen-expansion-case (entry)
+(defcustom bk-post-init-style 'allow
+  "Specify how block evaluation should be handled after initialization has concluded.
+
+Valid values are: warn, error, allow and fail-silent"
+  :group 'bk-block
+  :type '(radio
+          (symbol warn)
+          (symbol error)
+          (symbol allow)
+          (symbol fail-silent)))
+
+;;;; Implementation:
+
+(defun bk--gen-expansion-case (entry)
   (let ((key (nth 0 entry))
         (applicator (nth 1 entry))
         (setter (nth 2 entry))
@@ -71,13 +104,13 @@
               ,expr)
             ~)))))))
 
-(defun bk-gen-expansions (list)
+(defun bk--gen-expansions (list)
   `(lambda (default pair)
      (let ((key (car pair))
            (~ (cdr pair)))
        (cond
         ,@(mapcar
-           'bk-gen-expansion-case
+           'bk--gen-expansion-case
            list)
         (t
          (error "Unrecognized keyword `%s' in `%s'" key default))))))
@@ -94,7 +127,7 @@
     (cdr (nreverse result))))
 
 (defun bk-gen-compiled (list)
-  (byte-compile (bk-gen-expansions list)))
+  (byte-compile (bk--gen-expansions list)))
 
 (prog1 "Compile expansion"
   (setq bk--expansion (bk-gen-compiled bk-expansion-alist)))
@@ -111,38 +144,51 @@
         pre pst req wnt)
     (dolist (entry alist)
       (let* ((triple (funcall bk--expansion name entry))
+             (place (nth 1 triple))
              (setter (nth 0 triple))
-             (symbol (nth 1 triple))
              (value (nth 2 triple)))
-        (set symbol
-             (nconc
-              (when (eq setter '+)
-                (symbol-value symbol))
-              value))))
-    `(prog1 ',name
-       ,(if sd--in-unit-setup-phase
-            ;; case: actually setting up units
-            `(condition-case-unless-debug err
-                 (progn
-                   ,@pre
-                   (sd-register-unit
-                    ',name
-                    '(progn ,@pst)
-                    ',req
-                    ',wnt))
-               (error
-                (bk--warn "Error in block `%s' during setup: %s" ',name err)
-                (sd-register-unit
-                 ',name
-                 '(error "This unit could not be set up properly!")
-                 ',req
-                 ',wnt)))
-          ;; case: manually run
-          `(prog1
-               (bk--warn
-                "`%s' block run after startup without dependency checks." ',name)
+        (cond
+         ((eq setter '+)
+          (set place (nconc (symbol-value place) value)))
+         (t
+          (set place value)))))
+    (bk--gen-block name pre pst req wnt)))
+
+(defun bk--gen-block (name pre pst req wnt)
+  `(if sd--in-unit-setup-phase
+       (condition-case-unless-debug err
+           (prog1 ',name
              ,@pre
-             ,@pst)))))
+             (sd-register-unit
+              ',name
+              '(progn ,@pst)
+              ',req
+              ',wnt))
+         (error
+          (bk--warn "Error in block `%s' during setup: %s" ',name err)
+          (sd-register-unit
+           ',name
+           '(error "This unit could not be set up properly!")
+           ',req
+           ',wnt)))
+     ,(cond
+       ((eq bk-post-init-style 'warn)
+        `(prog1 ',name
+           (bk--warn "Running block `%s' without dependency checks!" ',name)
+           ,@pre
+           ,@pst))
+       ((eq bk-post-init-style 'error)
+        `(error "Not running block `%s' without after initialization!" ',name))
+       ((eq bk-post-init-style 'allow)
+        `(prog1 ',name
+           ,@pre
+           ,@pst))
+       ((eq bk-post-init-style 'fail-silent)
+        nil)
+       (t
+        (error "Invalid value for `bk-post-init-style'!")))))
+
+;;;; Interface:
 
 (defmacro bk-block (name &rest args)
   (declare (indent 1))
