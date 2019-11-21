@@ -1,9 +1,10 @@
-;;; fi-subr --- misc subroutines for use in fi-emacs -*- lexical-binding: t; -*-
+;;; fi-subr.el --- Miscellaneous subroutines for use in fi-emacs -*- lexical-binding: t; -*-
 
 ;; Author: Leo Gaskin <leo.gaskin@brg-feldkirchen.at>
 ;; Created: 21 June 2019
 ;; Homepage: https://github.com/leotaku/fi-emacs
-;; Keywords: fi, fi-emacs
+;; Keywords: fi-emacs, configuration, lisp
+;; Package-Version: 0.1.0
 ;; Package-Requires: ((emacs "25.1"))
 
 ;; This file is not part of GNU Emacs.
@@ -21,7 +22,8 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-;;; Commentary
+;;; Commentary:
+;; 
 
 ;;; Code
 
@@ -62,3 +64,5 @@ Intended mainly for advising existing functions."
     (apply fun args)))
 
 (provide 'fi-subr)
+
+;;; fi-subr.el ends here

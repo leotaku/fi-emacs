@@ -1,9 +1,10 @@
-;;; bk-block.el --- block-based init management based on sd.el
+;;; bk-block.el --- Block-style init management based on sd.el -*- lexical-binding: nil -*-
 
 ;; Author: Leo Gaskin <leo.gaskin@brg-feldkirchen.at>
 ;; Created: 19 July 2019
 ;; Homepage: https://github.com/leotaku/fi-emacs
-;; Keywords: fi-emacs, bk, bk-block
+;; Keywords: fi-emacs, configuration, lisp
+;; Package-Version: 0.1.0
 ;; Package-Requires: ((emacs "25.1"))
 
 ;; This file is not part of GNU Emacs.

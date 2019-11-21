@@ -1,9 +1,10 @@
-;;; fi-helpers --- additional user commands for fi-emacs -*- lexical-binding: t; -*-
+;;; fi-helpers.el --- Additional user commands for fi-emacs -*- lexical-binding: t; -*-
 
 ;; Author: Leo Gaskin <leo.gaskin@brg-feldkirchen.at>
 ;; Created: 21 June 2019
 ;; Homepage: https://github.com/leotaku/fi-emacs
-;; Keywords: fi, fi-emacs
+;; Keywords: fi-emacs, configuration, lisp
+;; Package-Version: 0.1.0
 ;; Package-Requires: ((emacs "25.1"))
 
 ;; This file is not part of GNU Emacs.

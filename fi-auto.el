@@ -1,9 +1,10 @@
-;;; fi-auto --- improved emacs autoloading -*- lexical-binding: t; -*-
+;;; fi-auto.el --- Small improvements to autoloading -*- lexical-binding: t; -*-
 
 ;; Author: Leo Gaskin <leo.gaskin@brg-feldkirchen.at>
 ;; Created: 20 June 2019
 ;; Homepage: https://github.com/leotaku/fi-emacs
-;; Keywords: fi, fi-emacs, autoloading
+;; Keywords: fi-emacs, configuration, lisp
+;; Package-Version: 0.1.0
 ;; Package-Requires: ((emacs "25.1"))
 
 ;; This file is not part of GNU Emacs.
@@ -21,11 +22,12 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-;;; Commentary
-
-;;; Code
+;;; Commentary:
+;; 
 
 (require 'fi-subr)
+
+;;; Code:
 
 (defun fi-auto-at (place file)
   "Autoload a feature FILE from an external function PLACE."
@@ -42,3 +44,5 @@
                (fi-simulate-key ,key ,keymap))))))
 
 (provide 'fi-auto)
+
+;;; fi-auto.el ends here

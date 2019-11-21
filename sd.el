@@ -1,9 +1,10 @@
-;; sd.el --- unit-script system for fastiter -*- lexical-binding: t -*-
+;;; sd.el --- Unit-script system for fastiter -*- lexical-binding: t -*-
 
 ;; Author: Leo Gaskin <leo.gaskin@brg-feldkirchen.at>
 ;; Created: 19 July 2019
 ;; Homepage: https://github.com/leotaku/fi-emacs
-;; Keywords: fi-emacs, sd, startup
+;; Keywords: fi-emacs, configuration, extension, lisp
+;; Package-Version: 0.1.0
 ;; Package-Requires: ((emacs "25.1"))
 
 ;; This file is not part of GNU Emacs.
