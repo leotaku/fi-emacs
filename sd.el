@@ -47,10 +47,10 @@ SD-UNIT FORMAT:
   \(NAME state form . dependencies)
 WHERE:
   \(symbolp NAME)
-  \(or (memq state '(0 1 2)) (listp state))
+  \(or (memq state '(-1 0 1 2)) (listp state))
   \(listp form)
   \(and (listp dependencies) (all (mapcar 'symbolp dependencies)))"
-  (cons name (cons 0 (cons nil nil))))
+  (cons name (cons -1 (cons nil nil))))
 
 (defsubst sd-unit-name (unit)
   "Access slot UNIT of UNIT object.
@@ -82,8 +82,9 @@ This function acts as a generalized variable."
   "Define a UNIT named NAME with execution form FORM, requiring
 the units REQUIRES, wanted by the units WANTED-BY.
 
-This function will error if other units have already been started
-when it is run."
+This function will error if other units with the same name have
+been defined or any units have already been started when it is
+run."
   (unless (and (symbolp name)
                (listp requires)
                (listp form)
@@ -92,18 +93,20 @@ when it is run."
   (unless sd--in-unit-setup-phase
     (error "Registering new units after a target has been reached is illegal"))
   (let ((unit (assq name sd-unit-list)))
-    (when (null unit)
-      (setq unit (sd-make-unit name)))
     ;; wanted-by is handled by the dep system
-    (when (eq (sd-unit-state unit) 0)
-      (setf (sd-unit-dependencies unit)
-            (nconc requires
-                   (sd-unit-dependencies unit)))
-      (setf (sd-unit-form unit) form)
-      (setf (sd-unit-state unit) 1)
-      (sd--destructive-set-unit unit)
-      (dolist (wants-name wanted-by)
-        (sd--add-unit-dependency wants-name name)))))
+    (if (null unit)
+        (setq unit (sd-make-unit name))
+      (unless (eq (sd-unit-state unit) -1)
+        (error "An unit with the same name has already been registered")))
+    (setf (sd-unit-state unit) 0)
+    (setf (sd-unit-dependencies unit)
+          (nconc requires
+                 (sd-unit-dependencies unit)))
+    (setf (sd-unit-form unit) form)
+    (setf (sd-unit-state unit) 1)
+    (sd--destructive-set-unit unit)
+    (dolist (wants-name wanted-by)
+      (sd--add-unit-dependency wants-name name))))
 
 (defun sd--reach-unit (name)
   (setq sd--in-unit-setup-phase nil)
@@ -144,6 +147,7 @@ when it is run."
           state
         4))
      ;; case: unit not existent or not registered
+     ;; this means either \(null unit) or (<= state 0)
      (t
       (unless unit
         (setq unit (sd-make-unit name)))
@@ -154,17 +158,22 @@ when it is run."
                              t)))
         ;; subcase: unit is a special feature (leading dot)
         (if is-special
-            (if (require (intern (substring str 1)) nil t)
-                ;; succeded require
-                (progn
-                  (setf (sd-unit-state unit) 1)
-                  (sd--destructive-set-unit unit)
-                  (sd--reach-unit name))
-              ;; failed require
-              (setf (sd-unit-state unit)
-                    (list name 'eval (format "Feature `%s' could not be loaded" str)))
-              (sd--destructive-set-unit unit)
-              (sd-unit-state unit))
+            (let ((req-err
+                   (condition-case-unless-debug err
+                       (prog1 nil
+                         (require (intern (substring str 1)) nil))
+                     (error err))))
+              (if (null req-err)
+                  ;; succeded require
+                  (progn
+                    (setf (sd-unit-state unit) 1)
+                    (sd--destructive-set-unit unit)
+                    (sd--reach-unit name))
+                ;; failed require
+                (setf (sd-unit-state unit)
+                      (list name 'eval (format "Error during require: %s" req-err)))
+                (sd--destructive-set-unit unit)
+                (sd-unit-state unit)))
           ;; not special
           (setf (sd-unit-state unit) (list name 'noexist))
           (sd--destructive-set-unit unit)
