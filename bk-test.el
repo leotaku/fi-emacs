@@ -27,10 +27,22 @@
    '(leaf foo
       :config nil)))
 
-(benchmark-run 2000
+(benchmark-run 1000
   (macroexpand-1
    '(leaf foo
-	  :config 10
-	  :init 10)))
+	  :config nil
+	  :init nil)))
+
+(/
+ (car (benchmark-run-compiled 1000
+        (leaf foo
+          :config nil
+          :init nil)))
+ (car (benchmark-run-compiled 1000
+        (bk-block foo
+          :config nil
+          :init nil
+          :requires 10
+          :wanted-by 10))))
 
 ;;; bk-test.el ends here
