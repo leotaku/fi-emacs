@@ -93,10 +93,12 @@ run."
   (unless sd--in-unit-setup-phase
     (error "Registering new units after a target has been reached is illegal"))
   (let ((unit (assq name sd-startup-list)))
+    ;; construct new unit
     (if (null unit)
         (setq unit (sd-make-unit name))
       (unless (eq (sd-unit-state unit) -1)
         (error "An unit with the same name has already been registered")))
+    ;; set unit fields
     (setf (sd-unit-state unit) 0)
     (setf (sd-unit-dependencies unit)
           (nconc requires
@@ -104,6 +106,7 @@ run."
     (setf (sd-unit-form unit) form)
     (setf (sd-unit-state unit) 1)
     (sd--destructive-set-unit unit)
+    ;; handle wanted-by
     (dolist (wants-name wanted-by)
       (sd--add-unit-dependency wants-name name))))
 
