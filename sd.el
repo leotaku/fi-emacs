@@ -33,7 +33,7 @@
 
 ;;; Code:
 
-(defconst sd-unit-list '()
+(defconst sd-startup-list '()
   "List used for unit description lookup.
 Every entry is a unit object, see `sd-make-unit' for documentation.")
 
@@ -92,8 +92,7 @@ run."
     (error "Wrong type argument to register-unit"))
   (unless sd--in-unit-setup-phase
     (error "Registering new units after a target has been reached is illegal"))
-  (let ((unit (assq name sd-unit-list)))
-    ;; wanted-by is handled by the dep system
+  (let ((unit (assq name sd-startup-list)))
     (if (null unit)
         (setq unit (sd-make-unit name))
       (unless (eq (sd-unit-state unit) -1)
@@ -110,7 +109,7 @@ run."
 
 (defun sd--reach-unit (name)
   (setq sd--in-unit-setup-phase nil)
-  (let* ((unit (assq name sd-unit-list))
+  (let* ((unit (assq name sd-startup-list))
          (state (if unit (sd-unit-state unit) 0)))
     (cond
      ;; case: unit registered
@@ -180,7 +179,7 @@ run."
           (sd-unit-state unit)))))))
 
 (defsubst sd--add-unit-dependency (name dep-name)
-  (let ((unit (assq name sd-unit-list)))
+  (let ((unit (assq name sd-startup-list)))
     (when (null unit)
       (setq unit (sd-make-unit name)))
     (setf (sd-unit-dependencies unit)
@@ -189,8 +188,8 @@ run."
     (sd--destructive-set-unit unit)))
 
 (defsubst sd--destructive-set-unit (unit)
-  (setq sd-unit-list (assq-delete-all (sd-unit-name unit) sd-unit-list))
-  (push unit sd-unit-list))
+  (setq sd-startup-list (assq-delete-all (sd-unit-name unit) sd-startup-list))
+  (push unit sd-startup-list))
 
 (defun sd--format-error (state &optional prefix)
   "Format the error STATE returned by `sd--reach-unit' in an user-readable manner.
