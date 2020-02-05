@@ -13,7 +13,7 @@
   `(ert-deftest ,(intern (concat "sd-" (symbol-name name)))
        ()
      (let ((sd--in-unit-setup-phase t)
-           (sd-unit-list nil))
+           (sd-startup-list nil))
        ,@body)))
 
 (sd-ert-deftest simple-success
