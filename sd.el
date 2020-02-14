@@ -235,6 +235,88 @@ has newly succeded and nil if it has succeded or errored before."
      ((t
        (error "This should be unreachable: %s" state))))))
 
+(defun sd--generate-unit-graph (name)
+  (let* ((unit (assoc name sd-startup-list))
+         (deps (and unit (sd-unit-dependencies unit)))
+         (graph))
+    (dolist (name deps)
+      (setq graph (append graph (sd--generate-unit-graph name))))
+    (if graph
+        (cons name (cons '| graph))
+      (cons name nil))))
+
+(defun sd-poll-target (target delay &optional silent inhibit)
+  (let* ((timer (timer-create))
+         (poll (sd--poll-setup-polling
+                target silent inhibit-message (lambda () (cancel-timer timer)))))
+    (timer-set-time timer delay delay)
+    (timer-set-function
+     timer poll)
+    (timer-activate timer)))
+
+(defun sd--poll-setup-polling (target &optional silent inhibit stop-callback)
+  (let* ((graph (nreverse (sd--generate-unit-graph target)))
+         (timer (timer-create))
+         (state 2)
+         (skip nil)
+         (length (length graph))
+         (current 0))
+    (lambda ()
+      (let ((name (car graph)))
+        (setq graph (cdr graph))
+        (setq current (1+ current))
+        (cond
+         ((null name)
+          (when stop-callback
+            (funcall stop-callback)))
+         ((and skip (listp state))
+          (let ((unit (assq name sd-startup-list)))
+            (setf (sd-unit-state unit) (list name 'dependencies nil))
+            (setq state (sd-unit-state unit))
+            (setq skip nil)))
+         ((eq name '|)
+          (setq skip t))
+         (t
+          (setq skip nil)
+          (let ((new-state (let ((inhibit-message inhibit))
+                             (sd--reach-only-unit name))))
+            (when (listp new-state)
+              (setq state (list state new-state))))
+          (unless silent
+            (message "Polled %s (%s/%s)" name current length))))))))
+
+(defun sd--reach-only-unit (name)
+  (let ((unit (assq name sd-startup-list)))
+    (if (not unit)
+        (list name 'noexist)
+      (let ((form (sd-unit-form unit))
+            (old-state (sd-unit-state unit)))
+        (cond
+         ;; available
+         ((eq old-state 1)
+          (let ((eval-error (condition-case-unless-debug err
+                                (prog1 nil
+                                  (eval (sd-unit-form unit) nil))
+                              (error err))))
+            (setf (sd-unit-state unit)
+                  (if eval-error
+                      (cons name (cons 'eval eval-error))
+                    2))
+            (sd--destructive-set-unit unit)
+            (sd-unit-state unit)))
+         ;; unavailable
+         ((or (eq old-state -1) (eq old-state 0))
+          (setf (sd-unit-state unit)
+                (list name 'noexist))
+          (sd--destructive-set-unit unit)
+          (sd-unit-state unit))
+         ;; done
+         ((eq old-state 2)
+          2)
+         ;; errored
+         ((listp old-state)
+          old-state))))))
+
 (provide 'sd)
 
 ;;; sd.el ends here
