@@ -106,98 +106,112 @@ run."
     (setf (sd-unit-form unit) form)
     (setf (sd-unit-state unit) 1)
     (sd--destructive-set-unit unit)
+    ;; handle special dependencies
+    (dolist (name requires)
+      (let ((feature (sd--get-name-special name)))
+        (when feature
+          (let ((unit (sd-make-unit name)))
+            (setf (sd-unit-form unit) `(require ',feature))
+            (setf (sd-unit-state unit) 1)
+            (sd--destructive-set-unit unit)))))
     ;; handle wanted-by
     (dolist (wants-name wanted-by)
-      (sd--add-unit-dependency wants-name name))))
+      (sd--add-unit-dependencies wants-name (list name)))))
 
-(defun sd--reach-unit (name)
-  (setq sd--in-unit-setup-phase nil)
-  (let* ((unit (assq name sd-startup-list))
-         (state (if unit (sd-unit-state unit) 0)))
-    (cond
-     ;; case: unit registered
-     ((eq state 1)
-      ;; protect against recursion
-      ;; possible performance loss
-      (setf (sd-unit-state unit) (list name 'recursive))
-      (sd--destructive-set-unit unit)
-      (let (errors rec-error)
-        (dolist (dep (sd-unit-dependencies unit))
-          (let ((err (sd--reach-unit dep)))
-            (when (listp err)
-              (push err errors))))
-        ;; REMOVE: ad-hoc feature integration
-        ;; (require name nil t)
-        (setf (sd-unit-state unit)
-              (if errors
-                  (cons name (cons 'dependencies errors))
-                (let ((eval-error (condition-case-unless-debug err
-                                      (prog1 nil
-                                        (eval (sd-unit-form unit) nil))
-                                    (error err))))
-                  (if eval-error
-                      (cons name (cons 'eval eval-error))
-                    2)))))
-      (sd--destructive-set-unit unit)
-      (sd-unit-state unit))
-     ;; case: unit already reached
-     ((eq state 2)
-      3)
-     ;; case: unit already errored
-     ((listp state)
-      (if (eq 'recursive (cadr state))
-          state
-        4))
-     ;; case: unit not existent or not registered
-     ;; this means either \(null unit) or (<= state 0)
-     (t
-      (unless unit
-        (setq unit (sd-make-unit name)))
-      (let* ((str (symbol-name name))
-             (is-special (eq (compare-strings
-                              str 0 1
-                              "." 0 1)
-                             t)))
-        ;; subcase: unit is a special feature (leading dot)
-        (if is-special
-            (let ((req-err
-                   (condition-case-unless-debug err
-                       (prog1 nil
-                         (require (intern (substring str 1)) nil))
-                     (error err))))
-              (if (null req-err)
-                  ;; succeded require
-                  (progn
-                    (setf (sd-unit-state unit) 1)
-                    (sd--destructive-set-unit unit)
-                    (sd--reach-unit name))
-                ;; failed require
-                (setf (sd-unit-state unit)
-                      (list name 'eval (format "Error during require: %s" req-err)))
-                (sd--destructive-set-unit unit)
-                (sd-unit-state unit)))
-          ;; not special
-          (setf (sd-unit-state unit) (list name 'noexist))
-          (sd--destructive-set-unit unit)
-          (sd-unit-state unit)))))))
-
-(defsubst sd--add-unit-dependency (name dep-name)
+(defsubst sd--add-unit-dependencies (name dependencies)
   (let ((unit (assq name sd-startup-list)))
     (when (null unit)
       (setq unit (sd-make-unit name)))
     (setf (sd-unit-dependencies unit)
           (nconc (sd-unit-dependencies unit)
-                 (list dep-name)))
+                 dependencies))
     (sd--destructive-set-unit unit)))
 
 (defsubst sd--destructive-set-unit (unit)
-  (setq sd-startup-list (assq-delete-all (sd-unit-name unit) sd-startup-list))
-  (push unit sd-startup-list))
+  (setf (alist-get (car unit) sd-startup-list) (cdr unit)))
+
+(defsubst sd--get-name-special (name)
+  (let ((string (symbol-name name)))
+    (if (eq t (compare-strings
+               string 0 1
+               "." 0 1))
+	    (intern (substring string 1))
+      nil)))
+
+(defun sd--reach-only-unit (name)
+  "Try reaching the unit named NAME.
+Fails if any dependencies have failed or not have been reached yet."
+  (let* ((unit (assq name sd-startup-list))
+         (old-state (sd-unit-state unit)))
+    (cond
+     ;; available
+     ((eq old-state 1)
+      (sd--reach-known-unit unit))
+     ;; unavailable
+     ((or (eq old-state -1) (eq old-state 0))
+      (setf (sd-unit-state unit)
+            (list name 'noexist))
+      (sd--destructive-set-unit unit)
+      (sd-unit-state unit))
+     ;; done
+     ((eq old-state 2)
+      2)
+     ;; nonexist
+     ((null unit)
+      (list name 'noexist))
+     ;; errored
+     ((listp old-state)
+      old-state))))
+
+(defsubst sd--reach-known-unit (unit)
+  (let* ((form (sd-unit-form unit))
+         (failed-deps (seq-remove
+                       (lambda (it)
+                         (let ((state (sd-unit-state it)))
+                           (and (numberp state) (= state 2))))
+                       (seq-map
+                        (lambda (it)
+                          (assoc it sd-startup-list))
+                        (sd-unit-dependencies unit)))))
+    (setf (sd-unit-state unit)
+          (if (null failed-deps)
+              ;; all dependencies succeeded 
+              (let ((eval-error (condition-case-unless-debug err
+                                    (prog1 nil
+                                      (eval (sd-unit-form unit) nil))
+                                  (error err))))
+                (if eval-error
+                    ;; eval error
+                    (cons name (cons 'eval eval-error))
+                  ;; eval success
+                  2))
+            ;; dependecies failed
+            (cons name (cons 'dependencies failed-deps))))
+    (sd--destructive-set-unit unit)
+    (sd-unit-state unit)))
+
+(defun sd--generate-unit-sequence (name)
+  (let* ((unit (assoc name sd-startup-list))
+         (deps (and unit (sd-unit-dependencies unit))))
+    (cons name (seq-mapcat 'sd--generate-unit-sequence deps))))
+
+(defun sd--setup-unit-polling (target callback stop-callback)
+  (let* ((sequence (nreverse (sd--generate-unit-sequence target))))
+    (lambda ()
+      (let ((head (car sequence))
+            (tail (cdr sequence)))
+        (cond
+         ((not head))
+         ((not tail)
+          (funcall stop-callback (funcall callback head)))
+         (t
+          (funcall callback head)))
+        (setq sequence tail)))))
 
 (defun sd--format-error (state &optional prefix)
   "Format the error STATE returned by `sd--reach-unit' in an user-readable manner.
 Optional argument PREFIX should be used to describe the recursion
-level at which this error has occured."
+level at which this error has occurred."
   (let ((unit (car state))
         (reason (cadr state))
         (context (cddr state))
@@ -216,106 +230,38 @@ level at which this error has occured."
                  (sd--format-error state (1+ prefix)))
                context "\n"))))))
 
-(defun sd-reach-target (name)
-  "Manually reach the unit named NAME.
-
-Returns an user-readable error when the unit has errored, t if it
-has newly succeded and nil if it has succeded or errored before."
-  (let ((state (sd--reach-unit name)))
-    (cond
-     ;; case: unit newly errored
-     ((listp state)
-      (sd--format-error state))
-     ((eq state 2)
-      t)
-     ;; case: unit already succeded/errored
-     ((or (eq state 3)
-          (eq state 4))
-      nil)
-     ((t
-       (error "This should be unreachable: %s" state))))))
-
-(defun sd--generate-unit-graph (name)
-  (let* ((unit (assoc name sd-startup-list))
-         (deps (and unit (sd-unit-dependencies unit)))
-         (graph))
-    (dolist (name deps)
-      (setq graph (append graph (sd--generate-unit-graph name))))
-    (if graph
-        (cons name (cons '| graph))
-      (cons name nil))))
-
-(defun sd-poll-target (target delay &optional silent inhibit)
+(defun sd-poll-target (target delay &optional notify callback)
+  "Manually reach the unit named NAME, polling every DELAY seconds.
+Calls CALLBACK with an user-readable error when the unit has errored, nil if it has succeeded."
   (let* ((timer (timer-create))
-         (poll (sd--poll-setup-polling
-                target silent inhibit-message (lambda () (cancel-timer timer)))))
+         (finish (lambda (state)
+                   (cancel-timer timer)
+                   (funcall callback
+                            (when (listp state)
+                              (sd--format-error state)))))
+         (update (lambda (name)
+                   (let ((inhibit-message nil)
+                         (time (current-time)))
+                     (prog1 (sd--reach-only-unit name)
+                       (when notify
+                         (message
+                          "Reaching unit: %s in %.06f"
+                          name (float-time (time-since time))))))))
+         (poll (sd--setup-unit-polling target update finish)))
     (timer-set-time timer delay delay)
     (timer-set-function
      timer poll)
     (timer-activate timer)))
 
-(defun sd--poll-setup-polling (target &optional silent inhibit stop-callback)
-  (let* ((graph (nreverse (sd--generate-unit-graph target)))
-         (timer (timer-create))
-         (state 2)
-         (skip nil)
-         (length (length graph))
-         (current 0))
-    (lambda ()
-      (let ((name (car graph)))
-        (setq graph (cdr graph))
-        (setq current (1+ current))
-        (cond
-         ((null name)
-          (when stop-callback
-            (funcall stop-callback)))
-         ((and skip (listp state))
-          (let ((unit (assq name sd-startup-list)))
-            (setf (sd-unit-state unit) (list name 'dependencies nil))
-            (setq state (sd-unit-state unit))
-            (setq skip nil)))
-         ((eq name '|)
-          (setq skip t))
-         (t
-          (setq skip nil)
-          (let ((new-state (let ((inhibit-message inhibit))
-                             (sd--reach-only-unit name))))
-            (when (listp new-state)
-              (setq state (list state new-state))))
-          (unless silent
-            (message "Polled %s (%s/%s)" name current length))))))))
-
-(defun sd--reach-only-unit (name)
-  (let ((unit (assq name sd-startup-list)))
-    (if (not unit)
-        (list name 'noexist)
-      (let ((form (sd-unit-form unit))
-            (old-state (sd-unit-state unit)))
-        (cond
-         ;; available
-         ((eq old-state 1)
-          (let ((eval-error (condition-case-unless-debug err
-                                (prog1 nil
-                                  (eval (sd-unit-form unit) nil))
-                              (error err))))
-            (setf (sd-unit-state unit)
-                  (if eval-error
-                      (cons name (cons 'eval eval-error))
-                    2))
-            (sd--destructive-set-unit unit)
-            (sd-unit-state unit)))
-         ;; unavailable
-         ((or (eq old-state -1) (eq old-state 0))
-          (setf (sd-unit-state unit)
-                (list name 'noexist))
-          (sd--destructive-set-unit unit)
-          (sd-unit-state unit))
-         ;; done
-         ((eq old-state 2)
-          2)
-         ;; errored
-         ((listp old-state)
-          old-state))))))
+(defun sd-reach-target (name)
+  "Manually reach the unit named NAME.
+Returns an user-readable error when the unit has errored, nil if it has succeeded."
+  (let ((sequence (nreverse (sd--generate-unit-sequence name)))
+	    (state))
+    (dolist (name sequence)
+      (setq state (sd--reach-only-unit name)))
+    (when (listp state)
+      (sd--format-error state))))
 
 (provide 'sd)
 

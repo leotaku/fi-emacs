@@ -219,17 +219,27 @@ Valid values are: warn, error, allow and fail-silent"
 
 Displays warnings for all errors that have ocurred."
   (let ((return (sd-reach-target unit-name)))
-    (cond
-     ((eq return t)
-      (message "Target `%s' succeded." unit-name))
-     ((eq return nil)
-      nil)
-     (t
-      (bk--warn "Target `%s' failed because:\n%s" unit-name return)))))
+    (if (null return)
+        (message "Target `%s' succeded." unit-name)
+      (bk--warn "Target `%s' failed because:\n%s" unit-name return))))
 
-(defalias 'bk-register-unit 'sd-register-unit
-  "Alias for `sd-register-unit' so no functions from the sd
-package need to be used directly.")
+(defun bk-poll-target (unit-name after)
+  "Try reaching the target UNIT-NAME asynchronously.
+Call AFTER, after this has finished.
+
+Displays warnings for all errors that have ocurred."
+  (sd-poll-target
+   unit-name 0.1 t
+   (lambda (state)
+     (if (null state)
+         (message "Target `%s' succeded." unit-name)
+       (bk--warn "Target `%s' failed because:\n%s" unit-name state))
+     (funcall after))))
+
+(defun bk-register-target (name &optional dependencies)
+  "Register an empty unit without dependencies or code.
+These can be used to group together units using `:wanted-by'."
+  (sd-register-unit name nil dependencies nil))
 
 ;;;; Integrations:
 
