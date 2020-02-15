@@ -29,8 +29,6 @@
 ;; TODO: proper format for success/failure
 ;; TODO: non-numerical returns from `sd--reach-unit'
 
-(require 'gv)
-
 ;;; Code:
 
 (defconst sd-startup-list '()
