@@ -100,12 +100,14 @@ Valid values are: warn, error, allow and fail-silent"
           `(mapcar
             (lambda (~)
               (when (eq t ~)
-                (set '~ default))
+                (set '~ name))
               ,expr)
-            ~)))))))
+            ~))
+         (t
+          (error "bk-expansion-alist: Unknown applicator `%s'" applicator)))))))
 
 (defun bk--gen-expansions (list)
-  `(lambda (default pair)
+  `(lambda (name pair)
      (let ((key (car pair))
            (~ (cdr pair)))
        (cond
@@ -113,7 +115,7 @@ Valid values are: warn, error, allow and fail-silent"
            'bk--gen-expansion-case
            list)
         (t
-         (error "Unrecognized keyword `%s' in `%s'" key default))))))
+         (error "Unrecognized keyword `%s' in `%s'" key name))))))
 
 (defun bk--construct-alist (args)
   (let (result current)
@@ -150,8 +152,10 @@ Valid values are: warn, error, allow and fail-silent"
         (cond
          ((eq setter '+)
           (set place (nconc (symbol-value place) value)))
+         ((eq setter '=)
+          (set place value))
          (t
-          (set place value)))))
+          (error "bk-expansion-alist: Unknown setter `%s'" applicator)))))
     (bk--gen-block name pre pst req wnt)))
 
 (defun bk--gen-block (name pre pst req wnt)
@@ -186,7 +190,7 @@ Valid values are: warn, error, allow and fail-silent"
        ((eq bk-post-init-style 'fail-silent)
         nil)
        (t
-        (error "Invalid value for `bk-post-init-style'!")))))
+        (error "Invalid value for `bk-post-init-style': `%s'" bk-post-init-style)))))
 
 ;;;; Interface:
 
