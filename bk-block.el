@@ -40,18 +40,21 @@
   :prefix "bk-")
 
 (defcustom bk-expansion-alist
-  '((:straight  d + pre `(straight-use-package ',~))
-    (:init      - + pre ~)
+  '((:at-load   - + pre ~)
     (:load      * + pre `(load ,(expand-file-name ~ user-emacs-directory) nil t))
-    (:load-at   * + pst `(load ,(expand-file-name ~ user-emacs-directory) nil t))
     (:config    - + pst ~)
     (:wanted-by * = wnt ~)
     (:requires  * + req ~)
     (:hook      * + pst `(add-hook ',(car ~) ',(cdr ~)))
     (:start     * + pst `(,~))
-    (:custom    * + pre `(fi-csetq ,(car ~) ,(cdr ~)))
-    (:bind      * + pre `(leaf-keys ,~))
-    (:bind*     * + pre `(leaf-keys* ,~)))
+    (:custom    * + pst `(fi-csetq ,(car ~) ,(cdr ~)))
+    (:bind      * + pst `(leaf-keys ,~))
+    (:bind*     * + pst `(leaf-keys* ,~))
+    (:mode      * + pst  `(add-to-list
+                           'auto-mode-alist
+                           ',(cons
+                              (or (car-safe ~) ~)
+                              (or (cdr-safe ~) name)))))
   "An alist mapping every symbol to a bk-generation expression."
   :group 'bk-block
   :type '(alist :value-type
