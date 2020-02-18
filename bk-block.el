@@ -81,6 +81,9 @@ Valid values are: warn, error, allow and fail-silent"
           (symbol allow)
           (symbol fail-silent)))
 
+(defvar bk--expansion nil
+  "The expansion function used for `bk-block0'.")
+
 ;;;; Implementation:
 
 (defun bk--gen-expansion-case (entry)
@@ -133,11 +136,13 @@ Valid values are: warn, error, allow and fail-silent"
     (push (nreverse current) result)
     (cdr (nreverse result))))
 
-(defun bk-gen-compiled (list)
-  (byte-compile (bk--gen-expansions list)))
+(defun bk-gen-compiled ()
+  (setq
+   bk--expansion
+   (byte-compile (bk--gen-expansions bk-expansion-alist))))
 
 (prog1 "Compile expansion"
-  (setq bk--expansion (bk-gen-compiled bk-expansion-alist)))
+  (bk-gen-compiled))
 
 (defun bk--warn (format-string &rest args)
   (display-warning
