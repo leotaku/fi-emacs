@@ -253,18 +253,18 @@ Displays warnings for all errors that have ocurred."
         (message "Target `%s' succeded." unit-name)
       (bk--warn "Target `%s' failed because:\n%s" unit-name return))))
 
-(defun bk-poll-target (unit-name after)
+(defun bk-poll-target (unit-name &optional after)
   "Try reaching the target UNIT-NAME asynchronously.
 Call AFTER, after this has finished.
 
 Displays warnings for all errors that have ocurred."
   (sd-poll-target
-   unit-name 0.1 t
+   unit-name 0.025 t
    (lambda (state)
      (if (null state)
          (message "Target `%s' succeded." unit-name)
        (bk--warn "Target `%s' failed because:\n%s" unit-name state))
-     (funcall after))))
+     (when after (funcall after)))))
 
 (defun bk-register-target (name &optional dependencies)
   "Register an empty unit without dependencies or code.
