@@ -236,7 +236,9 @@ level at which this error has occurred."
               (mapconcat
                (lambda (state)
                  (sd--format-error state (1+ prefix)))
-               context "\n"))))))
+               context "\n")))
+     (t
+      (format "%s:`unknown' failed because of improper setup: %s" prefix state)))))
 
 (defun sd-poll-target (target delay &optional notify callback)
   "Manually reach the unit named NAME, polling every DELAY seconds.
