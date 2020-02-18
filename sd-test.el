@@ -23,17 +23,19 @@
 (sd-ert-deftest simple-success-again
   (sd-register-unit 'foo)
   (should (equal (sd--reach-unit 'foo) 2))
-  (should (equal (sd--reach-unit 'foo) 3)))
+  (should (equal (sd--reach-unit 'foo) 2)))
 
 (sd-ert-deftest simple-fail
   (should (equal (sd--reach-unit 'foo) '(foo noexist))))
 
 (sd-ert-deftest existing-package
-  (should (equal (sd--reach-unit '.emacs) 2)))
+  (sd-register-unit 'test)
+  (should (equal (sd--reach-unit 'test) 2)))
 
 (sd-ert-deftest existing-package-twice
-  (should (equal (sd--reach-unit '.emacs) 2))
-  (should (equal (sd--reach-unit '.emacs) 3)))
+  (sd-register-unit 'test)
+  (should (equal (sd--reach-unit 'test) 2))
+  (should (equal (sd--reach-unit 'test) 2)))
 
 (sd-ert-deftest dep-fail
   (sd-register-unit 'foo nil '(bar))
@@ -42,7 +44,7 @@
 (sd-ert-deftest dep-fail-twice
   (sd-register-unit 'foo nil '(bar))
   (should (equal (sd--reach-unit 'foo) '(foo dependencies (bar noexist))))
-  (should (equal (sd--reach-unit 'foo) 4)))
+  (should (equal (sd--reach-unit 'foo) '(foo dependencies (bar noexist)))))
 
 (sd-ert-deftest run-only-once
   (setq tracker nil)
