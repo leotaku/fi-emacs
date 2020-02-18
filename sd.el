@@ -162,15 +162,14 @@ Fails if any dependencies have failed or not have been reached yet."
       old-state))))
 
 (defsubst sd--reach-known-unit (unit)
-  (let* ((form (sd-unit-form unit))
-         (failed-deps (seq-remove
-                       (lambda (it)
-                         (let ((state (sd-unit-state it)))
-                           (and (numberp state) (= state 2))))
-                       (seq-map
-                        (lambda (it)
-                          (assoc it sd-startup-list))
-                        (sd-unit-dependencies unit)))))
+  (let* ((name (sd-unit-name unit))
+         (form (sd-unit-form unit))
+         (failed-deps
+          (seq-remove
+           'null
+           (seq-map
+            'sd--get-unit-state
+            (sd-unit-dependencies unit)))))
     (setf (sd-unit-state unit)
           (if (null failed-deps)
               ;; all dependencies succeeded 
@@ -187,6 +186,17 @@ Fails if any dependencies have failed or not have been reached yet."
             (cons name (cons 'dependencies failed-deps))))
     (sd--destructive-set-unit unit)
     (sd-unit-state unit)))
+
+(defun sd--get-unit-state (name)
+  (let* ((unit (assoc name sd-startup-list))
+         (state (sd-unit-state unit)))
+    (cond
+     ((eq state 2)
+      nil)
+     ((null state)
+      (list name 'noexist))
+     (t
+      state))))
 
 (defun sd--generate-unit-sequence (name)
   (let* ((unit (assoc name sd-startup-list))
