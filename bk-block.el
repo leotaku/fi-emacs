@@ -1,4 +1,4 @@
-;;; bk-block.el --- Block-style init management based on sd.el -*- lexical-binding: nil -*-
+;;; bk-block.el --- Block-style init management based on sd.el -*- lexical-binding: t -*-
 
 ;; Author: Leo Gaskin <leo.gaskin@brg-feldkirchen.at>
 ;; Created: 19 July 2019
@@ -161,46 +161,62 @@ Valid values are: warn, error, allow and fail-silent"
              (value (nth 2 triple)))
         (cond
          ((eq setter '+)
-          (set place (nconc (symbol-value place) value)))
+          (cond
+	   ((eq place 'pre)
+	    (setq pre (nconc pre value)))
+	   ((eq place 'pst)
+	    (setq pst (nconc pst value)))
+	   ((eq place 'req)
+	    (setq req (nconc req value)))
+	   ((eq place 'wnt)
+	    (setq wnt (nconc wnt value)))))
          ((eq setter '=)
-          (set place value))
+          (cond
+	   ((eq place 'pre)
+	    (setq pre value))
+	   ((eq place 'pst)
+	    (setq pst value))
+	   ((eq place 'req)
+	    (setq req value))
+	   ((eq place 'wnt)
+	    (setq wnt value))))
          (t
           (error "bk-expansion-alist: Unknown setter `%s'" applicator)))))
     (bk--gen-block name pre pst req wnt)))
 
 (defun bk--gen-block (name pre pst req wnt)
-  `(if sd--in-unit-setup-phase
-       (condition-case-unless-debug err
-           (prog1 ',name
-             ,@pre
-             (sd-register-unit
-              ',name
-              '(progn ,@pst)
-              ',req
-              ',wnt))
-         (error
-          (bk--warn "Error in block `%s' during setup: %s" ',name err)
-          (sd-register-unit
-           ',name
-           '(error "This unit could not be set up properly!")
-           ',req
-           ',wnt)))
-     ,(cond
-       ((eq bk-post-init-style 'warn)
-        `(prog1 ',name
-           (bk--warn "Running block `%s' without dependency checks!" ',name)
+  (cond
+   (sd--in-unit-setup-phase
+    `(condition-case-unless-debug err
+         (prog1 ',name
            ,@pre
-           ,@pst))
-       ((eq bk-post-init-style 'error)
-        `(error "Not running block `%s' without after initialization!" ',name))
-       ((eq bk-post-init-style 'allow)
-        `(prog1 ',name
-           ,@pre
-           ,@pst))
-       ((eq bk-post-init-style 'fail-silent)
-        nil)
-       (t
-        (error "Invalid value for `bk-post-init-style': `%s'" bk-post-init-style)))))
+           (sd-register-unit
+            ',name
+            '(progn ,@pst)
+            ',req
+            ',wnt))
+       (error
+        (bk--warn "Error in block `%s' during setup: %s" ',name err)
+        (sd-register-unit
+         ',name
+         '(error "This unit could not be set up properly!")
+         ',req
+         ',wnt))))
+   ((eq bk-post-init-style 'warn)
+    `(prog1 ',name
+       (bk--warn "Running block `%s' without dependency checks!" ',name)
+       ,@pre
+       ,@pst))
+   ((eq bk-post-init-style 'error)
+    `(error "Not running block `%s' without after initialization!" ',name))
+   ((eq bk-post-init-style 'allow)
+    `(prog1 ',name
+       ,@pre
+       ,@pst))
+   ((eq bk-post-init-style 'fail-silent)
+    nil)
+   (t
+    (error "Invalid value for `bk-post-init-style': `%s'" bk-post-init-style))))
 
 ;;;; Interface:
 
