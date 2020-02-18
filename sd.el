@@ -241,6 +241,7 @@ level at which this error has occurred."
 (defun sd-poll-target (target delay &optional notify callback)
   "Manually reach the unit named NAME, polling every DELAY seconds.
 Calls CALLBACK with an user-readable error when the unit has errored, nil if it has succeeded."
+  (setq sd--in-unit-setup-phase nil)
   (let* ((timer (timer-create))
          (finish (lambda (state)
                    (cancel-timer timer)
@@ -264,6 +265,7 @@ Calls CALLBACK with an user-readable error when the unit has errored, nil if it 
 (defun sd-reach-target (name)
   "Manually reach the unit named NAME.
 Returns an user-readable error when the unit has errored, nil if it has succeeded."
+  (setq sd--in-unit-setup-phase nil)
   (let ((sequence (nreverse (sd--generate-unit-sequence name)))
 	    (state))
     (dolist (name sequence)
