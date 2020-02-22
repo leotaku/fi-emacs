@@ -136,6 +136,21 @@ Valid values are: warn, error, allow and fail-silent"
     (push (nreverse current) result)
     (cdr (nreverse result))))
 
+(defsubst bk--get-name-feature (name)
+  (let ((string (symbol-name name)))
+    (if (eq t (compare-strings
+               string 0 1
+               "." 0 1))
+	    (intern (substring string 1)))))
+
+(defun bk--gen-special-requirements (names)
+  (mapcar
+   (lambda (name)
+     (let ((feature (bk--get-name-feature name)))
+       (when feature
+         `(sd-register-unit ',name '(require ',feature) nil nil t))))
+   names))
+
 (defun bk-gen-compiled ()
   (setq
    bk--expansion
@@ -162,24 +177,24 @@ Valid values are: warn, error, allow and fail-silent"
         (cond
          ((eq setter '+)
           (cond
-	   ((eq place 'pre)
-	    (setq pre (nconc pre value)))
-	   ((eq place 'pst)
-	    (setq pst (nconc pst value)))
-	   ((eq place 'req)
-	    (setq req (nconc req value)))
-	   ((eq place 'wnt)
-	    (setq wnt (nconc wnt value)))))
+	       ((eq place 'pre)
+	        (setq pre (nconc pre value)))
+	       ((eq place 'pst)
+	        (setq pst (nconc pst value)))
+	       ((eq place 'req)
+	        (setq req (nconc req value)))
+	       ((eq place 'wnt)
+	        (setq wnt (nconc wnt value)))))
          ((eq setter '=)
           (cond
-	   ((eq place 'pre)
-	    (setq pre value))
-	   ((eq place 'pst)
-	    (setq pst value))
-	   ((eq place 'req)
-	    (setq req value))
-	   ((eq place 'wnt)
-	    (setq wnt value))))
+	       ((eq place 'pre)
+	        (setq pre value))
+	       ((eq place 'pst)
+	        (setq pst value))
+	       ((eq place 'req)
+	        (setq req value))
+	       ((eq place 'wnt)
+	        (setq wnt value))))
          (t
           (error "bk-expansion-alist: Unknown setter `%s'" applicator)))))
     (bk--gen-block name pre pst req wnt)))
@@ -187,21 +202,23 @@ Valid values are: warn, error, allow and fail-silent"
 (defun bk--gen-block (name pre pst req wnt)
   (cond
    (sd--in-unit-setup-phase
-    `(condition-case-unless-debug err
-         (prog1 ',name
-           ,@pre
-           (sd-register-unit
-            ',name
-            '(progn ,@pst)
-            ',req
-            ',wnt))
-       (error
-        (bk--warn "Error in block `%s' during setup: %s" ',name err)
-        (sd-register-unit
-         ',name
-         '(error "This unit could not be set up properly!")
-         ',req
-         ',wnt))))
+    `(progn
+       ,@(bk--gen-special-requirements req)
+       (condition-case-unless-debug err
+           (prog1 ',name
+             ,@pre
+             (sd-register-unit
+              ',name
+              '(progn ,@pst)
+              ',req
+              ',wnt))
+         (error
+          (bk--warn "Error in block `%s' during setup: %s" ',name err)
+          (sd-register-unit
+           ',name
+           '(error "This unit could not be set up properly!")
+           ',req
+           ',wnt)))))
    ((eq bk-post-init-style 'warn)
     `(prog1 ',name
        (bk--warn "Running block `%s' without dependency checks!" ',name)
@@ -248,10 +265,12 @@ Valid values are: warn, error, allow and fail-silent"
   "Try reaching the target UNIT-NAME.
 
 Displays warnings for all errors that have ocurred."
-  (let ((return (sd-reach-target unit-name)))
-    (if (null return)
+  (let ((state (sd-reach-target unit-name)))
+    (if (eq 'success state)
         (message "Target `%s' succeded." unit-name)
-      (bk--warn "Target `%s' failed because:\n%s" unit-name return))))
+      (bk--warn "Target `%s' failed because:\n%s"
+                unit-name
+                (sd-format-error unit-name)))))
 
 (defun bk-poll-target (unit-name &optional after)
   "Try reaching the target UNIT-NAME asynchronously.
@@ -261,9 +280,11 @@ Displays warnings for all errors that have ocurred."
   (sd-poll-target
    unit-name 0.025 t
    (lambda (state)
-     (if (null state)
+     (if (eq 'success state)
          (message "Target `%s' succeded." unit-name)
-       (bk--warn "Target `%s' failed because:\n%s" unit-name state))
+       (bk--warn "Target `%s' failed because:\n%s"
+                 unit-name
+                 (sd-format-error unit-name)))
      (when after (funcall after)))))
 
 (defun bk-register-target (name &optional dependencies)
