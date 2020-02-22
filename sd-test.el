@@ -18,55 +18,48 @@
 
 (sd-ert-deftest simple-success
   (sd-register-unit 'foo)
-  (should (equal (sd--reach-unit 'foo) 2)))
+  (should (equal (sd-reach-target 'foo) 'success)))
 
 (sd-ert-deftest simple-success-again
   (sd-register-unit 'foo)
-  (should (equal (sd--reach-unit 'foo) 2))
-  (should (equal (sd--reach-unit 'foo) 2)))
+  (should (equal (sd-reach-target 'foo) 'success))
+  (should (equal (sd-reach-target 'foo) 'success)))
 
 (sd-ert-deftest simple-fail
-  (should (equal (sd--reach-unit 'foo) '(foo noexist))))
-
-(sd-ert-deftest existing-package
-  (sd-register-unit 'test)
-  (should (equal (sd--reach-unit 'test) 2)))
-
-(sd-ert-deftest existing-package-twice
-  (sd-register-unit 'test)
-  (should (equal (sd--reach-unit 'test) 2))
-  (should (equal (sd--reach-unit 'test) 2)))
+  (should (equal (sd-reach-target 'foo) nil)))
 
 (sd-ert-deftest dep-fail
   (sd-register-unit 'foo nil '(bar))
-  (should (equal (sd--reach-unit 'foo) '(foo dependencies (bar noexist)))))
+  (should (equal (sd-reach-target 'foo) '(dependencies bar))))
 
 (sd-ert-deftest dep-fail-twice
   (sd-register-unit 'foo nil '(bar))
-  (should (equal (sd--reach-unit 'foo) '(foo dependencies (bar noexist))))
-  (should (equal (sd--reach-unit 'foo) '(foo dependencies (bar noexist)))))
+  (should (equal (sd-reach-target 'foo) '(dependencies bar)))
+  (should (equal (sd-reach-target 'foo) '(dependencies bar))))
 
 (sd-ert-deftest run-only-once
   (setq tracker nil)
   (sd-register-unit 'foo '(setq tracker t))
   (should (eq tracker nil))
-  (sd--reach-unit 'foo)
+  (sd-reach-target 'foo)
   (should (eq tracker t))
   (setq tracker nil)
-  (sd--reach-unit 'foo)
+  (sd-reach-target 'foo)
   (should (eq tracker nil)))
+
+;; FIXME: failing
 
 (sd-ert-deftest recursion
   (sd-register-unit 'foo nil '(foo))
-  (should (equal
-           (sd--reach-unit 'foo)
-           '(foo dependencies (foo recursive)))))
+  (sd--generate-unit-sequence 'foo))
+
+;; FIXME: failing
 
 (sd-ert-deftest mutual-recursion
   (sd-register-unit 'foo nil '(bar))
   (sd-register-unit 'bar nil '(foo))
   (should (equal
-           (sd--reach-unit 'foo)
+           (sd-reach-target 'foo)
            '(foo dependencies
                  (bar dependencies
                       (foo recursive))))))
