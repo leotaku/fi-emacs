@@ -1,4 +1,4 @@
-;;; bk-block.el --- Block-style init management based on sd.el -*- lexical-binding: t -*-
+;;; bk.el --- Block-style init management based on sd.el -*- lexical-binding: t -*-
 
 ;; Author: Leo Gaskin <leo.gaskin@brg-feldkirchen.at>
 ;; Created: 19 July 2019
@@ -308,6 +308,6 @@ These can be used to group together units using `:wanted-by'."
      (cons block 1)
      (alist-get 'emacs-lisp-mode lispy-tag-arity))))
 
-(provide 'bk-block)
+(provide 'bk)
 
 ;;; bk-block.el ends here
