@@ -42,7 +42,7 @@
 (defun sd-display-tabulated ()
   "Show the startup results in a sorted table."
   (interactive)
-  (let ((buffer-name (format "*Sd-Unit-%s*" "Tabulated")))
+  (let ((buffer-name (format "*Sd Display %s*" "Tabulated")))
     (with-current-buffer (get-buffer-create buffer-name)
       (sd-display-tabulated-mode)
       (setq tabulated-list-entries 'sd-display--list-entries)
