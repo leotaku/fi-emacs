@@ -76,12 +76,12 @@ This function acts as a generalized variable."
 (gv-define-setter sd-unit-dependencies (value item)
   `(setf (cdddr ,item) ,value))
 
-(defun sd-register-unit (name &optional form requires wanted-by override)
+(defun sd-register-unit (name &optional form requires wanted-by overridep)
   "Define a UNIT named NAME with execution form FORM, requiring
 the units REQUIRES, wanted by the units WANTED-BY.
 
 This function will error if other units with the same name have
-been defined, unless OVERRIDE is set to a non-nil value or any
+been defined, unless OVERRIDEP is set to a non-nil value or any
 units have already been started when it is run."
   (unless (and (symbolp name)
                (listp requires)
@@ -92,7 +92,7 @@ units have already been started when it is run."
     (error "Registering new units after a target has been reached is illegal"))
   (let ((unit (assq name sd-startup-list)))
     ;; construct new unit
-    (if (or override (null unit))
+    (if (or overridep (null unit))
         (setq unit (sd-make-unit name))
       (unless (eq (sd-unit-state unit) 'mention)
         (error "An unit with the same name has already been registered")))
@@ -169,8 +169,8 @@ Fails if any dependencies have failed or not have been reached yet."
          (deps (and unit (sd-unit-dependencies unit))))
     (cons name (apply 'append (mapcar 'sd--generate-unit-sequence deps)))))
 
-(defun sd--setup-unit-polling (target callback stop-callback)
-  (let* ((sequence (nreverse (sd--generate-unit-sequence target))))
+(defun sd--setup-unit-polling (name callback stop-callback)
+  (let* ((sequence (nreverse (sd--generate-unit-sequence name))))
     (lambda ()
       (let ((head (car sequence))
             (tail (cdr sequence)))
@@ -215,7 +215,7 @@ level at which this error has occurred."
      (t
       (format "%s:`%s' failed because of improper setup: %s" prefix name unit)))))
 
-(defun sd-poll-target (target delay &optional notify callback)
+(defun sd-poll-target (name delay &optional notify callback)
   "Manually reach the unit named NAME, polling every DELAY seconds.
 Calls CALLBACK with the state of the finished unit."
   (setq sd--in-unit-setup-phase nil)
@@ -230,7 +230,7 @@ Calls CALLBACK with the state of the finished unit."
                          (message
                           "Reaching unit: %s in %.06f"
                           name (float-time (time-since time))))))))
-         (poll (sd--setup-unit-polling target update finish)))
+         (poll (sd--setup-unit-polling name update finish)))
     (timer-set-idle-time timer delay delay)
     (timer-set-function
      timer poll)
