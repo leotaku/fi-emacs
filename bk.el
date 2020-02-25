@@ -55,7 +55,7 @@
                            ',(cons
                               (or (car-safe ~) ~)
                               (or (cdr-safe ~) name)))))
-  "An alist mapping every symbol to a bk-generation expression."
+  "An alist mapping keyword to a reader, place and quoted expression."
   :group 'bk-block
   :type '(alist :value-type
                 (list
@@ -82,7 +82,7 @@ Valid values are: warn, error, allow and fail-silent"
           (symbol fail-silent)))
 
 (defvar bk--expansion nil
-  "The expansion function used for `bk-block0'.")
+  "The compiled expansion function used for parsing keyword arguments.")
 
 ;;;; Implementation:
 
@@ -151,13 +151,15 @@ Valid values are: warn, error, allow and fail-silent"
          `(sd-register-unit ',name '(require ',feature) nil nil t))))
    names))
 
-(defun bk-gen-compiled ()
+(defun bk-generate-expansions ()
+  "Generate and compile the expansion function used for parsing keyword arguments.
+Reads the description from the special `bk-expansion-alist' variable."
   (setq
    bk--expansion
    (byte-compile (bk--gen-expansions bk-expansion-alist))))
 
 (prog1 "Compile expansion"
-  (bk-gen-compiled))
+  (bk-generate-expansions))
 
 (defun bk--warn (format-string &rest args)
   (display-warning
