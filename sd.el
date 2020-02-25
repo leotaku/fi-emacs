@@ -231,7 +231,7 @@ Calls CALLBACK with the state of the finished unit."
                           "Reaching unit: %s in %.06f"
                           name (float-time (time-since time))))))))
          (poll (sd--setup-unit-polling target update finish)))
-    (timer-set-time timer delay delay)
+    (timer-set-idle-time timer delay delay)
     (timer-set-function
      timer poll)
     (timer-activate timer)))
