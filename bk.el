@@ -261,30 +261,30 @@ Valid values are: warn, error, allow and fail-silent"
      :requires ,(intern (concat "." (symbol-name name)))
      ,@args))
 
-(defun bk-reach-target (unit-name)
-  "Try reaching the target UNIT-NAME.
+(defun bk-reach-target (name)
+  "Try reaching the target NAME.
 
 Displays warnings for all errors that have ocurred."
-  (let ((state (sd-reach-target unit-name)))
+  (let ((state (sd-reach-target name)))
     (if (eq 'success state)
-        (message "Target `%s' succeded." unit-name)
+        (message "Target `%s' succeded." name)
       (bk--warn "Target `%s' failed because:\n%s"
-                unit-name
-                (sd-format-error unit-name)))))
+                name
+                (sd-format-error name)))))
 
-(defun bk-poll-target (unit-name &optional after)
-  "Try reaching the target UNIT-NAME asynchronously.
+(defun bk-poll-target (name &optional after)
+  "Try reaching the target NAME asynchronously.
 Call AFTER, after this has finished.
 
 Displays warnings for all errors that have ocurred."
   (sd-poll-target
-   unit-name 0.025 t
+   name 0.025 t
    (lambda (state)
      (if (eq 'success state)
-         (message "Target `%s' succeded." unit-name)
+         (message "Target `%s' succeded." name)
        (bk--warn "Target `%s' failed because:\n%s"
-                 unit-name
-                 (sd-format-error unit-name)))
+                 name
+                 (sd-format-error name)))
      (when after (funcall after)))))
 
 (defun bk-register-target (name &optional dependencies)
