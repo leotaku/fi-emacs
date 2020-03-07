@@ -1,6 +1,6 @@
 # fi-emacs
 
-`fi-emacs` is a collection of several packages that aim to provide provide the user with a holistic way of managing their GNU Emacs configuration.
+`fi-emacs` is a collection of several packages that aim to provide the user with a holistic way of managing their GNU Emacs configuration.
 
 ## Components
 
