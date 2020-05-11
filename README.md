@@ -51,3 +51,9 @@ This package provides an use-package replacement, based on `sd.el`.
 Currently `fi-emacs` is in constant flux, making good documentation pretty much impossible.
 As such, this README may already be outdated.
 Please read the docstrings or come back later.
+
+## License
+
+This Emacs package is distributed under the terms of the [GPL-3.0-or-later](LICENSE) license, meaning the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+Copyright notices are included with all individual files of source code.
