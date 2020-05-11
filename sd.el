@@ -139,7 +139,7 @@ Fails if any dependencies have failed or not have been reached yet."
          (failed-deps (delq nil (mapcar 'sd--get-failed-names deps))))
     (setf (sd-unit-state unit)
           (if (null failed-deps)
-              ;; all dependencies succeeded 
+              ;; all dependencies succeeded
               (let ((eval-error (condition-case-unless-debug err
                                     (prog1 nil
                                       (eval (sd-unit-form unit) nil))
