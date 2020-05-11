@@ -1,7 +1,6 @@
 ;;; bk-test.el --- manual tests and benchmarking for bk-block.el
 
 ;;; Commentary:
-;; 
 
 ;;; Code:
 

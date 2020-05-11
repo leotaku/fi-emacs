@@ -1,7 +1,6 @@
 ;;; sd-test.el --- automatic tests for sd.el
 
 ;;; Commentary:
-;; 
 
 (require 'ert)
 

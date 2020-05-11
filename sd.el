@@ -23,7 +23,6 @@
 ;; along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
-;; 
 
 ;; TODO: Make API better
 ;; TODO: proper format for success/failure
