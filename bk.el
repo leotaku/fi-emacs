@@ -24,7 +24,7 @@
 
 ;;; Commentary:
 
-;; CANCELED: maybe change pre to mean loading after deps but before self
+;; TODO: get file for blocks from `load-file-name'
 
 (require 'sd)
 (require 'fi-config)
