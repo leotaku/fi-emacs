@@ -1,4 +1,6 @@
 # fi-emacs
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fleotaku%2Ffi-emacs.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fleotaku%2Ffi-emacs?ref=badge_shield)
+
 
 `fi-emacs` is a collection of several packages that aim to provide the user with a holistic way of managing their GNU Emacs configuration.
 
@@ -57,3 +59,6 @@ Please read the docstrings or come back later.
 This Emacs package is distributed under the terms of the [GPL-3.0-or-later](LICENSE) license, meaning the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
 Copyright notices are included with all individual files of source code.
+
+
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fleotaku%2Ffi-emacs.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fleotaku%2Ffi-emacs?ref=badge_large)
