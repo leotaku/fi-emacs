@@ -28,6 +28,9 @@
 ;;
 ;; Please consult the individual elisp docstrings for documentation.
 
+;; TODO: Simplify sequence generation code
+;; TODO: Document complex subroutines
+
 ;;; Code:
 
 (defconst sd-startup-list '()
@@ -136,40 +139,52 @@ Fails if any dependencies have failed or not have been reached yet."
   (let* ((name (sd-unit-name unit))
          (form (sd-unit-form unit))
          (deps (sd-unit-dependencies unit))
-         (failed-deps (delq nil (mapcar 'sd--get-failed-names deps))))
+         (report (sd--get-failure-report deps)))
     (setf (sd-unit-state unit)
-          (if (null failed-deps)
-              ;; all dependencies succeeded
-              (let ((eval-error (condition-case-unless-debug err
-                                    (prog1 nil
-                                      (eval (sd-unit-form unit) nil))
-                                  (error err))))
-                (if eval-error
-                    ;; eval error
-                    (cons 'eval eval-error)
-                  ;; eval success
-                  'success))
-            ;; dependecies failed
-            (cons 'dependencies failed-deps)))
+          (cond
+           ;; dependecies failed
+           ((and report (listp report))
+	        (cons 'dependencies report))
+           ;; dependecies are recursive
+           (report (cons 'recursive nil))
+           ;; all dependencies succeeded
+           (t (sd--execute-unit unit))))
     (sd--destructive-set-unit unit)
     (sd-unit-state unit)))
 
-(defun sd--get-failed-names (name)
-  (let ((unit (assq name sd-startup-list)))
-    (cond
-     ((null unit)
-      name)
-     ((eq 'success (sd-unit-state unit))
-      nil)
-     (t name))))
+(defsubst sd--execute-unit (unit)
+  (let ((eval-error (condition-case-unless-debug err
+                        (prog1 nil
+                          (eval (sd-unit-form unit) nil))
+                      (error err))))
+    (if eval-error
+        ;; eval error
+        (cons 'eval eval-error)
+      ;; eval success
+      'success)))
 
-(defun sd--generate-unit-sequence (name)
-  (let* ((unit (assq name sd-startup-list))
-         (deps (and unit (sd-unit-dependencies unit))))
-    (cons name (apply 'append (mapcar 'sd--generate-unit-sequence deps)))))
+(defsubst sd--get-failure-report (names)
+  (let (report failed-deps state)
+    (dolist (name names)
+      (setq state (sd-unit-state (assq name sd-startup-list)))
+      (cond ((eq state 'success))
+            ((eq state 'avail)
+             (setq report 'recursive))
+            (t
+             (push name failed-deps))))
+    (or report failed-deps)))
+
+(defun sd--generate-unit-sequence (name list)
+  (if (memq name list)
+      list
+    (let* ((unit (assq name sd-startup-list))
+           (deps (and unit (sd-unit-dependencies unit)))
+           (fun (lambda (it) (sd--generate-unit-sequence it (cons name list))))
+           (full (apply 'append (mapcar fun deps))))
+      (cons name (delq name full)))))
 
 (defun sd--setup-unit-polling (name callback stop-callback)
-  (let* ((sequence (nreverse (sd--generate-unit-sequence name))))
+  (let* ((sequence (nreverse (sd--generate-unit-sequence name nil))))
     (lambda ()
       (let ((head (car sequence))
             (tail (cdr sequence)))
@@ -203,6 +218,8 @@ level at which this error has occurred."
       (format "%s:`%s' failed because it has not been reached yet." prefix name))
      ((eq reason 'eval)
       (format "%s:`%s' failed because an error occurred: %s" prefix name context))
+     ((eq reason 'recursive)
+      (format "%s:`%s' failed because it has at least one recursive dependency." prefix name))
      ((eq reason 'dependencies)
       (concat (format "%s:`%s' failed because:\n" prefix name)
               (mapconcat
@@ -239,7 +256,7 @@ Calls CALLBACK with the state of the finished unit."
   "Manually reach the unit named NAME.
 Returns an error when the unit has errored, nil if it has succeeded."
   (setq sd--in-unit-setup-phase nil)
-  (let ((sequence (nreverse (sd--generate-unit-sequence name)))
+  (let ((sequence (nreverse (sd--generate-unit-sequence name nil)))
 	    (state))
     (dolist (name sequence)
       (setq state (sd--reach-only-unit name)))
