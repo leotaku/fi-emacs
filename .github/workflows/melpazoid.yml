@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package: [ fi, sd ]
+        package: [fi, sd]
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python 3.6
