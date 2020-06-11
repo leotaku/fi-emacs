@@ -9,6 +9,9 @@ on: [push, pull_request]
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package: [ fi, bk, sd ]
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python 3.6
@@ -23,7 +26,7 @@ jobs:
     - name: Run
       env:
         # RECIPE as written for MELPA:
-        RECIPE: (fi :repo "leotaku/fi-emacs" :fetcher github)
+        RECIPE: (${{ matrix.package }} :repo "leotaku/fi-emacs" :fetcher github :files ("${{ matrix.package }}*.el"))
         # This package is not on MELPA:
         EXIST_OK: false
       run: echo $EXIST_OK && make -C ~/melpazoid
