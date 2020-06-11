@@ -4,9 +4,9 @@
 
 ## Components
 
-+ `fi` :: helper functions missing from Emacs
-+ `sd` :: systemd-inspired startup for Emacs
-+ `bk` :: use-package replacement using sd
++ `fi.el` :: Various utilities for fi-emacs
++ `sd.el` :: Unit system for fi-emacs
++ `bk.el` :: Block-style init management based on sd.el
 
 ## Documentation
 
