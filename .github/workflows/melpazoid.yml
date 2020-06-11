@@ -3,6 +3,8 @@
 # If your package is on GitHub, enable melpazoid's checks by copying this file
 # to .github/workflows/melpazoid.yml and modifying RECIPE and EXIST_OK below.
 
+# TODO: add check for bk sub-package
+
 name: melpazoid
 on: [push, pull_request]
 
@@ -10,8 +12,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        package: [ fi, bk, sd ]
+        package: [ fi, sd ]
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python 3.6
