@@ -24,6 +24,10 @@
 
 ;;; Commentary:
 
+;; This package provides an use-package replacement based on `sd.el`.
+;;
+;; Please consult the individual elisp docstrings for documentation.
+
 ;; TODO: get file for blocks from `load-file-name'
 
 (require 'sd)

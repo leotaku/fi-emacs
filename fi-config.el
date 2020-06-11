@@ -24,6 +24,12 @@
 
 ;;; Commentary:
 
+;; This package provides a number of useful configuration utilities
+;; that are missing from the Emacs standard library.  It only depends
+;; on facilities that are already loaded per default.
+;;
+;; Please consult the individual elisp docstrings for documentation.
+
 ;;; Code:
 
 (defmacro fi-csetq (sym value)

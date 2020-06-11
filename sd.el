@@ -1,4 +1,4 @@
-;;; sd.el --- Unit-script system for fastiter -*- lexical-binding: t -*-
+;;; sd.el --- Unit system for fi-emacs -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2019-2020 Leo Gaskin
 
@@ -24,9 +24,9 @@
 
 ;;; Commentary:
 
-;; TODO: Make API better
-;; TODO: proper format for success/failure
-;; TODO: non-numerical returns from `sd--reach-unit'
+;; This package provides an unit system partly inspired by systemd.
+;;
+;; Please consult the individual elisp docstrings for documentation.
 
 ;;; Code:
 

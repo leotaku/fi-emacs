@@ -24,6 +24,9 @@
 
 ;;; Commentary:
 
+;; This package provides a visual display of all defined sd-units.
+;; It can be accessed by executing the `sd-display-tabulated` command.
+
 (require 'sd)
 (require 'tabulated-list)
 
