@@ -1,4 +1,4 @@
-;;; bk-test.el --- manual tests and benchmarking for bk-block.el
+;;; bk-bench.el --- manual tests and benchmarking for bk.el
 
 ;;; Commentary:
 

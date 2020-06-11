@@ -2,6 +2,7 @@
 
 ;;; Commentary:
 
+(require 'sd)
 (require 'ert)
 
 ;;; Code:
@@ -46,21 +47,24 @@
   (sd-reach-target 'foo)
   (should (eq tracker nil)))
 
-;; FIXME: failing
+(sd-ert-deftest list-recursion
+  (sd-register-unit 'foo nil '(foo))
+  (sd--generate-unit-sequence 'foo nil))
 
 (sd-ert-deftest recursion
   (sd-register-unit 'foo nil '(foo))
-  (sd--generate-unit-sequence 'foo))
-
-;; FIXME: failing
+  (should (equal
+           (sd-reach-target 'foo)
+           '(recursive))))
 
 (sd-ert-deftest mutual-recursion
   (sd-register-unit 'foo nil '(bar))
   (sd-register-unit 'bar nil '(foo))
   (should (equal
            (sd-reach-target 'foo)
-           '(foo dependencies
-                 (bar dependencies
-                      (foo recursive))))))
+           '(dependencies bar)))
+  (should (equal
+           (sd-reach-target 'bar)
+           '(recursive))))
 
 ;;; sd-test.el ends here
