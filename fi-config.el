@@ -44,17 +44,19 @@ Taken from the following blogpost: `https://oremacs.com/2015/01/17/setting-up-ed
                'set-default)
            symbol value))
 
-(defmacro fi-configure-gui (&rest body)
+(defmacro fi-with-gui (&rest body)
   "Evaluate BODY whenever the Emacs GUI is ready.
-If the GUI is already running or has previously been started, execute BODY immediately."
-  `(if (and (display-graphic-p) (window-system))
+If the GUI is already running or has previously been started, execute BODY immediately.
+
+Note that this function does not consider terminal frames a GUI."
+  `(if (and (display-graphic-p))
        (progn ,@body)
      (add-hook 'focus-in-hook 'fi--run-at-gui)
      (push (lambda () ,@body) fi--run-at-gui-body)))
 
 (defvar fi--run-at-gui-body nil)
 (defun fi--run-at-gui ()
-  (when (and (display-graphic-p) (window-system))
+  (when (and (display-graphic-p))
     (remove-hook 'focus-in-hook 'fi--run-at-gui)
     (run-hooks 'fi--run-at-gui-body)
     (setq fi--run-at-gui-body nil)))
