@@ -30,9 +30,9 @@
 ;;
 ;; Please consult the individual elisp docstrings for documentation.
 
-;;; Code:
+(require 'fi-config)
 
-(require 'fi-subr)
+;;; Code:
 
 (defun fi-make-gui-frame ()
   "Create a X window system frame.
