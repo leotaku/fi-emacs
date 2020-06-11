@@ -136,9 +136,7 @@ Fails if any dependencies have failed or not have been reached yet."
      (t nil))))
 
 (defsubst sd--reach-known-unit (unit)
-  (let* ((name (sd-unit-name unit))
-         (form (sd-unit-form unit))
-         (deps (sd-unit-dependencies unit))
+  (let* ((deps (sd-unit-dependencies unit))
          (report (sd--get-failure-report deps)))
     (setf (sd-unit-state unit)
           (cond

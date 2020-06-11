@@ -315,4 +315,4 @@ These can be used to group together units using `:wanted-by'."
 
 (provide 'bk)
 
-;;; bk-block.el ends here
+;;; bk.el ends here
