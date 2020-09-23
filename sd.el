@@ -231,7 +231,9 @@ level at which this error has occurred."
 
 (defun sd-poll-target (name delay &optional notify callback)
   "Manually reach the unit named NAME, polling every DELAY seconds.
-Calls CALLBACK with the state of the finished unit."
+
+When NOTIFY is set inform the user about load times.
+Call CALLBACK with the state of the finished unit."
   (setq sd--in-unit-setup-phase nil)
   (let* ((timer (timer-create))
          (finish (lambda (state)

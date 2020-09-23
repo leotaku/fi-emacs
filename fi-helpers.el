@@ -37,8 +37,8 @@ This command also works when run from a daemonized Emacs instance."
       (run-hook-with-args 'after-make-frame-functions nil))))
 
 (defun fi-undo-global (arg)
-  "Undo some previous changes.
-Repeat this command to undo more changes.
+  "Undo some previous edits.
+Repeat this command to undo more edits.
 A numeric ARG serves as a repeat count.
 
 Unlike the builtin `undo' this command ignores transient mark mode."
@@ -48,8 +48,8 @@ Unlike the builtin `undo' this command ignores transient mark mode."
   (transient-mark-mode 1))
 
 (defun fi-undo-only-global (arg)
-  "Undo some previous changes, ignoring previous undo calls.
-Repeat this command to undo more changes.
+  "Undo some previous edits, without redoing previous undos.
+Repeat this command to undo more edits.
 A numeric ARG serves as a repeat count.
 
 Unlike the builtin `undo-only' this command ignores transient mark mode."

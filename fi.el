@@ -30,7 +30,7 @@
 (require 'fi-config)
 (require 'fi-helpers)
 
-;; Code:
+;;; Code:
 
 (provide 'fi)
 

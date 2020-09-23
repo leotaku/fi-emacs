@@ -74,8 +74,7 @@
                  sexp)))
 
 (defcustom bk-post-init-style 'allow
-  "Specify how block evaluation should be handled after initialization has concluded.
-
+  "How block evaluation should be handled after initialization.
 Valid values are: warn, error, allow and fail-silent"
   :group 'bk-block
   :type '(radio
@@ -155,7 +154,7 @@ Valid values are: warn, error, allow and fail-silent"
    names))
 
 (defun bk-generate-expansions ()
-  "Generate and compile the expansion function used for parsing keyword arguments.
+  "Generate and compile the function used for parsing keyword arguments.
 Reads the description from the special `bk-expansion-alist' variable."
   (setq
    bk--expansion
