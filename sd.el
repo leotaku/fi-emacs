@@ -49,7 +49,7 @@ WHERE:
   \(symbolp NAME)
   \(or (memq state '(mention avail sucess)) (listp state))
   \(listp form)
-  \(and (listp dependencies) (all (mapcar 'symbolp dependencies)))"
+  \(and (listp dependencies) (all (mapcar #'symbolp dependencies)))"
   (cons name (cons 'mention (cons nil nil))))
 
 (defsubst sd-unit-name (unit)
@@ -111,7 +111,7 @@ units have already been started when it is run."
 
 (defsubst sd--add-unit-dependencies (name dependencies)
   (let ((unit (assq name sd-startup-list)))
-    (when (null unit)
+    (unless unit
       (setq unit (sd-make-unit name)))
     (setf (sd-unit-dependencies unit)
           (nconc (sd-unit-dependencies unit)
@@ -178,7 +178,7 @@ Fails if any dependencies have failed or not have been reached yet."
     (let* ((unit (assq name sd-startup-list))
            (deps (and unit (sd-unit-dependencies unit)))
            (fun (lambda (it) (sd--generate-unit-sequence it (cons name list))))
-           (full (apply 'append (mapcar fun deps))))
+           (full (apply #'append (mapcar fun deps))))
       (cons name (delq name full)))))
 
 (defun sd--setup-unit-polling (name callback stop-callback)

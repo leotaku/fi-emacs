@@ -122,7 +122,7 @@ Valid values are: warn, error, allow and fail-silent"
            (~ (cdr pair)))
        (cond
         ,@(mapcar
-           'bk--gen-expansion-case
+           #'bk--gen-expansion-case
            list)
         (t
          (error "Unrecognized keyword `%s' in `%s'" key name))))))
@@ -166,7 +166,7 @@ Reads the description from the special `bk-expansion-alist' variable."
 (defun bk--warn (format-string &rest args)
   (display-warning
    'bk-block
-   (apply 'format format-string args)
+   (apply #'format format-string args)
    :warning))
 
 (defmacro bk-block0 (name &rest args)
