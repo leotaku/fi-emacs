@@ -296,6 +296,12 @@ Displays warnings for all errors that have ocurred."
 These can be used to group together units using `:wanted-by'."
   (sd-register-unit name nil dependencies nil))
 
+(defun bk-add-dependencies (name dependencies)
+  "Add additional DEPENDENCIES to unit with NAME."
+  (let ((unit (assq name sd-startup-list)))
+    (eval (cons 'progn (bk--gen-special-requirements dependencies)))
+    (sd--add-unit-dependencies name dependencies)))
+
 ;;;; Integrations:
 
 (defconst bk-font-lock-keywords
