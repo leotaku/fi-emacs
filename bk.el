@@ -282,7 +282,7 @@ Call AFTER, after this has finished.
 
 Displays warnings for all errors that have ocurred."
   (sd-poll-target
-   name 0.025 t
+   name 0.05 nil
    (lambda (state)
      (if (eq 'success state)
          (message "Target `%s' succeded." name)
