@@ -63,10 +63,6 @@ Unlike the builtin `undo-only' this command ignores transient mark mode."
   (interactive)
   (fi-simulate-key (kbd "C-g")))
 
-(defun fi-do-nothing (&rest _)
-  "A command that does absolutely nothing."
-  (interactive))
-
 (provide 'fi-helpers)
 
 ;;; fi-helpers.el ends here
