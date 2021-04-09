@@ -47,7 +47,7 @@ SD-UNIT FORMAT:
   \(NAME state form . dependencies)
 WHERE:
   \(symbolp NAME)
-  \(or (memq state '(mention avail sucess)) (listp state))
+  \(or (memq state '(mention avail success)) (listp state))
   \(listp form)
   \(and (listp dependencies) (all (mapcar #'symbolp dependencies)))"
   (cons name (cons 'mention (cons nil nil))))
