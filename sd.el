@@ -177,8 +177,8 @@ Fails if any dependencies have failed or not have been reached yet."
       list
     (let* ((unit (assq name sd-startup-list))
            (deps (and unit (sd-unit-dependencies unit)))
-           (fun (lambda (it) (sd--generate-unit-sequence it (cons name list))))
-           (full (apply #'append (mapcar fun deps))))
+           (func (lambda (it) (sd--generate-unit-sequence it (cons name list))))
+           (full (apply #'append (mapcar func deps))))
       (cons name (delq name full)))))
 
 (defun sd--setup-unit-polling (name callback stop-callback)
