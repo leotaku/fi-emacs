@@ -73,59 +73,38 @@
                         (symbol wnt))
                  sexp)))
 
-(defcustom bk-post-init-style 'allow
-  "How block evaluation should be handled after initialization.
-Valid values are: warn, error, allow and fail-silent"
-  :group 'bk-block
-  :type '(radio
-          (symbol warn)
-          (symbol error)
-          (symbol allow)
-          (symbol fail-silent)))
-
 (defvar bk--expansion nil
   "The compiled expansion function used for parsing keyword arguments.")
 
 ;;;; Implementation:
 
 (defun bk--gen-expansion-case (entry)
-  (let ((key (nth 0 entry))
-        (applicator (nth 1 entry))
-        (setter (nth 2 entry))
-        (listvar (nth 3 entry))
-        (expr (nth 4 entry)))
-    `((eq key ',key)
-      (list
-       ',setter
-       ',listvar
-       ,(cond
-         ((eq applicator '-)
-          expr)
-         ((eq applicator '*)
-          `(mapcar
-            (lambda (~)
-              ,expr)
-            ~))
-         ((eq applicator 'd)
-          `(mapcar
-            (lambda (~)
-              (when (eq t ~)
-                (set '~ name))
-              ,expr)
-            ~))
-         (t
-          (error "bk-expansion-alist: Unknown applicator `%s'" applicator)))))))
+  (let* ((key (nth 0 entry))
+         (applicator (nth 1 entry))
+         (setter (nth 2 entry))
+         (place (nth 3 entry))
+         (expr (nth 4 entry))
+         (transform
+          (cond ((eq applicator '-) expr)
+                ((eq applicator '*)
+                 `(mapcar (lambda (~) ,expr) ~))
+                ((eq applicator 'd)
+                 `(mapcar (lambda (~) (when (eq t ~) (set '~ name)) ,expr) ~)))))
+    (cond ((eq setter '+)
+           `((eq key ,key) (setq ,place (nconc ,place ,transform))))
+          ((eq setter '=)
+           `((eq key ,key) (setq ,place ,transform))))))
 
 (defun bk--gen-expansions (list)
-  `(lambda (name pair)
-     (let ((key (car pair))
-           (~ (cdr pair)))
-       (cond
-        ,@(mapcar
-           #'bk--gen-expansion-case
-           list)
-        (t
-         (error "Unrecognized keyword `%s' in `%s'" key name))))))
+  `(lambda (name alist)
+     (let (pre pst req wnt)
+       (dolist (entry alist)
+         (let ((key (car entry))
+               (~ (cdr entry)))
+           (cond
+            ,@(mapcar #'bk--gen-expansion-case list)
+            (t (error "Unrecognized keyword `%s' in `%s'" key name)))))
+       (list pre pst req wnt))))
 
 (defun bk--construct-alist (args)
   (let (result current)
@@ -138,27 +117,22 @@ Valid values are: warn, error, allow and fail-silent"
     (push (nreverse current) result)
     (cdr (nreverse result))))
 
-(defsubst bk--get-name-feature (name)
-  (let ((string (symbol-name name)))
-    (if (eq t (compare-strings
-               string 0 1
-               "." 0 1))
-	    (intern (substring string 1)))))
-
 (defun bk--gen-special-requirements (names)
-  (mapcar
-   (lambda (name)
-     (let ((feature (bk--get-name-feature name)))
-       (when feature
-         `(sd-register-unit ',name '(require ',feature) nil nil t))))
-   names))
+  (let ((result nil))
+    (dolist (name names result)
+      (let ((string (symbol-name name))
+            (feature nil))
+        (when (eq t (compare-strings string 0 1 "." 0 1))
+	      (setq feature (intern (substring string 1)))
+          (push `(sd-register-unit ',name (lambda () (require ',feature)))
+                result))))))
 
 (defun bk-generate-expansions ()
-  "Generate and compile the function used for parsing keyword arguments.
+"Generate and compile the function used for parsing keyword arguments.
 Reads the description from the special `bk-expansion-alist' variable."
-  (setq
-   bk--expansion
-   (byte-compile (bk--gen-expansions bk-expansion-alist))))
+(setq
+ bk--expansion
+ (byte-compile (bk--gen-expansions bk-expansion-alist))))
 
 (prog1 "Compile expansion"
   (bk-generate-expansions))
@@ -171,41 +145,12 @@ Reads the description from the special `bk-expansion-alist' variable."
 
 (defmacro bk-block0 (name &rest args)
   (declare (indent 1))
-  (let ((alist (bk--construct-alist args))
-        pre pst req wnt)
-    (dolist (entry alist)
-      (let* ((triple (funcall bk--expansion name entry))
-             (place (nth 1 triple))
-             (setter (nth 0 triple))
-             (value (nth 2 triple)))
-        (cond
-         ((eq setter '+)
-          (cond
-	       ((eq place 'pre)
-	        (setq pre (nconc pre value)))
-	       ((eq place 'pst)
-	        (setq pst (nconc pst value)))
-	       ((eq place 'req)
-	        (setq req (nconc req value)))
-	       ((eq place 'wnt)
-	        (setq wnt (nconc wnt value)))))
-         ((eq setter '=)
-          (cond
-	       ((eq place 'pre)
-	        (setq pre value))
-	       ((eq place 'pst)
-	        (setq pst value))
-	       ((eq place 'req)
-	        (setq req value))
-	       ((eq place 'wnt)
-	        (setq wnt value))))
-         (t
-          (error "bk-expansion-alist: Unknown setter `%s'" applicator)))))
-    (bk--gen-block name pre pst req wnt)))
-
-(defun bk--gen-block (name pre pst req wnt)
-  (cond
-   (sd--in-unit-setup-phase
+  (let* ((alist (bk--construct-alist args))
+         (result (funcall bk--expansion name alist))
+         (pre (nth 0 result))
+         (pst (nth 1 result))
+         (req (nth 2 result))
+         (wnt (nth 3 result)))
     `(progn
        ,@(bk--gen-special-requirements req)
        (condition-case-unless-debug err
@@ -213,55 +158,23 @@ Reads the description from the special `bk-expansion-alist' variable."
              ,@pre
              (sd-register-unit
               ',name
-              '(progn ,@pst)
+              (lambda () ,@pst)
               ',req
               ',wnt))
          (error
-          (bk--warn "Error in block `%s' during setup: %s" ',name err)
-          (sd-register-unit
-           ',name
-           '(error "This unit could not be set up properly!")
-           ',req
-           ',wnt)))))
-   ((eq bk-post-init-style 'warn)
-    `(prog1 ',name
-       (bk--warn "Running block `%s' without dependency checks!" ',name)
-       ,@pre
-       ,@pst))
-   ((eq bk-post-init-style 'error)
-    `(error "Not running block `%s' without after initialization!" ',name))
-   ((eq bk-post-init-style 'allow)
-    `(prog1 ',name
-       ,@pre
-       ,@pst))
-   ((eq bk-post-init-style 'fail-silent)
-    nil)
-   (t
-    (error "Invalid value for `bk-post-init-style': `%s'" bk-post-init-style))))
+          (bk--warn "Error in block `%s' during setup: %s" ',name err))))))
 
 ;;;; Interface:
 
 (defmacro bk-block (name &rest args)
   (declare (indent 1))
   `(bk-block0 ,name
-     :wanted-by gui-target
-     ,@args))
-
-(defmacro bk-block! (name &rest args)
-  (declare (indent 1))
-  `(bk-block0 ,name
-     :wanted-by init-target
+     :wanted-by default-target
      ,@args))
 
 (defmacro bk-block* (name &rest args)
   (declare (indent 1))
   `(bk-block ,name
-     :requires ,(intern (concat "." (symbol-name name)))
-     ,@args))
-
-(defmacro bk-block!* (name &rest args)
-  (declare (indent 1))
-  `(bk-block! ,name
      :requires ,(intern (concat "." (symbol-name name)))
      ,@args))
 
@@ -276,31 +189,10 @@ Displays warnings for all errors that have ocurred."
                 name
                 (sd-format-error name)))))
 
-(defun bk-poll-target (name &optional after)
-  "Try reaching the target NAME asynchronously.
-Call AFTER, after this has finished.
-
-Displays warnings for all errors that have ocurred."
-  (sd-poll-target
-   name 0.05 nil
-   (lambda (state)
-     (if (eq 'success state)
-         (message "Target `%s' succeded." name)
-       (bk--warn "Target `%s' failed because:\n%s"
-                 name
-                 (sd-format-error name)))
-     (when after (funcall after)))))
-
 (defun bk-register-target (name &optional dependencies)
   "Register an empty unit without dependencies or code.
 These can be used to group together units using `:wanted-by'."
-  (sd-register-unit name nil dependencies nil))
-
-(defun bk-add-dependencies (name dependencies)
-  "Add additional DEPENDENCIES to unit with NAME."
-  (let ((unit (assq name sd-startup-list)))
-    (eval (cons 'progn (bk--gen-special-requirements dependencies)))
-    (sd--add-unit-dependencies name dependencies)))
+  (sd-register-unit name #'ignore dependencies nil))
 
 ;;;; Integrations:
 
