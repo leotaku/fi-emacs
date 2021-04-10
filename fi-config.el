@@ -44,15 +44,14 @@ execute BODY immediately.
 Note that this function does not consider terminal frames a GUI."
   `(if (and (display-graphic-p))
        (progn ,@body)
-     (add-hook 'focus-in-hook 'fi--run-at-gui)
+     (add-function :after after-focus-change-function #'fi--run-at-gui)
      (push (lambda () ,@body) fi--run-at-gui-body)))
 
 (defvar fi--run-at-gui-body nil)
 (defun fi--run-at-gui ()
   (when (and (display-graphic-p))
-    (remove-hook 'focus-in-hook 'fi--run-at-gui)
     (run-hooks 'fi--run-at-gui-body)
-    (setq fi--run-at-gui-body nil)))
+    (remove-function after-focus-change-function #'fi--run-at-gui)))
 
 (defun fi-call-silent (fun &rest args)
   "Call FUN with ARGS, wrapped in a `inhibit-message` expression.
