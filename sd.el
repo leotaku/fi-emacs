@@ -42,7 +42,7 @@ SD-UNIT FORMAT:
 WHERE:
   \(symbolp NAME)
   \(or (memq state '(available success)) (consp state))
-  \(functionp form)
+  \(or (null f) (functionp f))
   \(and (listp dependencies) (all (mapcar #'symbolp dependencies)))
   \(and (listp dependents) (all (mapcar #'symbolp dependents)))"
   (nconc (list name 'available #'ignore nil) nil))
@@ -143,14 +143,14 @@ the units DEPENDENCIES, wanted by the units DEPENDENTS.
 This function will error if another unit with the same name has
 been defined, unless OVERRIDEP is set to a non-nil value."
   (unless (and (symbolp name)
-               (functionp f)
+               (or (null f) (functionp f))
                (listp dependencies)
                (listp dependents))
     (error "Wrong type argument to register-unit"))
   (let ((unit (sd-make-unit name)))
     ;; set unit fields
     (setf (sd-unit-state unit) 'available)
-    (setf (sd-unit-function unit) f)
+    (setf (sd-unit-function unit) (or f #'ignore))
     (setf (sd-unit-dependencies unit) dependencies)
     (setf (sd-unit-dependents unit) dependents)
     ;; register unit
