@@ -38,24 +38,20 @@
   (should (equal (sd-reach-target 'foo) '(dependencies bar))))
 
 (sd-ert-deftest run-only-once
-  (setq tracker nil)
-  (sd-register-unit 'foo '(setq tracker t))
-  (should (eq tracker nil))
+  (setq --sd-ert-tracker nil)
+  (sd-register-unit 'foo (lambda () (setq --sd-ert-tracker t)))
+  (should (eq --sd-ert-tracker nil))
   (sd-reach-target 'foo)
-  (should (eq tracker t))
-  (setq tracker nil)
+  (should (eq --sd-ert-tracker t))
+  (setq --sd-ert-tracker nil)
   (sd-reach-target 'foo)
-  (should (eq tracker nil)))
-
-(sd-ert-deftest list-recursion
-  (sd-register-unit 'foo nil '(foo))
-  (sd--generate-unit-sequence 'foo nil))
+  (should (eq --sd-ert-tracker nil)))
 
 (sd-ert-deftest recursion
   (sd-register-unit 'foo nil '(foo))
   (should (equal
            (sd-reach-target 'foo)
-           '(recursive))))
+           '(dependencies foo))))
 
 (sd-ert-deftest mutual-recursion
   (sd-register-unit 'foo nil '(bar))
@@ -65,6 +61,6 @@
            '(dependencies bar)))
   (should (equal
            (sd-reach-target 'bar)
-           '(recursive))))
+           '(dependencies foo))))
 
 ;;; sd-test.el ends here
