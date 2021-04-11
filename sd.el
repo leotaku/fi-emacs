@@ -47,6 +47,10 @@ WHERE:
   \(and (listp dependents) (all (mapcar #'symbolp dependents)))"
   (nconc (list name 'available #'ignore nil) nil))
 
+(defsubst sd-access-unit (name)
+  "Access a local representation of the unit named NAME."
+  (assq name sd-startup-list))
+
 (defsubst sd-update-unit (unit)
   "Ensure that all changes to local UNIT are registered."
   (setf (alist-get (car unit) sd-startup-list) (cdr unit)))
@@ -96,7 +100,7 @@ This function acts as a generalized variable."
     (if (not (eq state 'available))
         state
       (dolist (dependency dependencies)
-        (setq state (sd-unit-state (assq dependency sd-startup-list)))
+        (setq state (sd-unit-state (sd-access-unit dependency)))
         (unless (eq state 'success)
           (push dependency failed)))
       (when failed
@@ -160,7 +164,7 @@ been defined, unless OVERRIDEP is set to a non-nil value."
   "Format the error for unit with NAME in an user-readable manner.
 Optional argument PARENTS is used internally to keep track of
 units in a dependency chain."
-  (let* ((unit (assq name sd-startup-list))
+  (let* ((unit (sd-access-unit name))
          (state (sd-unit-state unit))
          (reason (or (car-safe state) state))
          (context (cdr-safe state))
@@ -193,10 +197,10 @@ Returns an error when the unit has errored, nil if it has succeeded."
   (let ((sequence (sd--generate-sequence name))
         (unit nil))
     (dolist (name sequence)
-      (setq unit (assq name sd-startup-list))
+      (setq unit (sd-access-unit name))
       (when unit
         (sd--reach-only-unit unit)))
-    (sd-unit-state (assq name sd-startup-list))))
+    (sd-unit-state (sd-access-unit name))))
 
 (provide 'sd)
 
