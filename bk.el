@@ -151,7 +151,7 @@ Reads the description from the special `bk-expansion-alist' variable."
          (pst (nth 1 result))
          (req (nth 2 result))
          (wnt (nth 3 result)))
-    `(progn
+    `(let ((state (sd-unit-state (sd-access-unit ',name))))
        ,@(bk--gen-special-requirements req)
        (condition-case-unless-debug err
            (prog1 ',name
@@ -160,7 +160,9 @@ Reads the description from the special `bk-expansion-alist' variable."
               ',name
               (lambda () ,@pst)
               ',req
-              ',wnt))
+              ',wnt)
+             (unless (or (null state) (eq state 'available))
+               (bk-reach-target ',name)))
          (error
           (bk--warn "Error in block `%s' during setup: %s" ',name err))))))
 
