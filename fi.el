@@ -1,4 +1,4 @@
-;;; fi.el --- Various utilities for fi-emacs -*- lexical-binding: t; -*-
+;;; fi.el --- The fi-emacs amalgamation -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2019-2021 Leo Gaskin
 
@@ -24,11 +24,12 @@
 
 ;;; Commentary:
 
-;; This meta-package collectively loads the various facilities
-;; provided by all fi-prefixed packages in the fi-emacs repository.
+;; This meta-package loads all features provided by fi-emacs.
 
-(require 'fi-config)
+(require 'sd)
+(require 'bk)
 (require 'fi-helpers)
+(require 'fi-config)
 
 ;;; Code:
 
