@@ -94,12 +94,11 @@ This function acts as a generalized variable."
     (error (cons 'eval err))))
 
 (defsubst sd--extract-state (unit)
-  (let* ((dependencies (sd-unit-dependencies unit))
-         (state (sd-unit-state unit))
+  (let* ((state (sd-unit-state unit))
          (failed nil))
     (if (not (eq state 'available))
         state
-      (dolist (dependency dependencies)
+      (dolist (dependency (sd--all-dependencies unit))
         (setq state (sd-unit-state (sd-access-unit dependency)))
         (unless (eq state 'success)
           (push dependency failed)))
@@ -112,6 +111,14 @@ This function acts as a generalized variable."
             (sd--run-unit unit)))
   (sd-update-unit unit)
   (sd-unit-state unit))
+
+(defun sd--all-dependencies (unit)
+  (let ((name (sd-unit-name unit))
+        (reverse nil))
+    (dolist (unit sd-startup-list)
+      (when (memq name (sd-unit-dependents unit))
+        (push (sd-unit-name unit) reverse)))
+    (append reverse (sd-unit-dependencies unit))))
 
 (defun sd--dependency-relations (unit-alist)
   (let ((result nil))
