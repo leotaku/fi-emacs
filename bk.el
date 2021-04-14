@@ -187,10 +187,10 @@ Reads the description from the special `bk-expansion-alist' variable."
 Displays warnings for all errors that have ocurred."
   (let ((state (sd-reach-target name)))
     (if (eq 'success state)
-        (message "Target `%s' succeded." name)
-      (bk--warn "Target `%s' failed because:\n%s"
-                name
-                (sd-format-error name)))))
+        (message "Target `%s' succeeded." name)
+      (message "Target `%s' failed." name)
+      (dolist (line (split-string (sd-format-error name) "\n"))
+        (bk--warn line)))))
 
 (defun bk-register-target (name &optional dependencies)
   "Register an empty unit without dependencies or code.
