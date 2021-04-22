@@ -190,10 +190,7 @@ units in a dependency chain."
      ((eq reason 'dependencies)
       (concat (format "%s:`%s' failed because:\n" prefix name)
               (mapconcat
-               (lambda (name)
-                 (sd-format-error
-                  name
-                  (cons name parents)))
+               (lambda (it) (sd-format-error it (cons name parents)))
                context "\n")))
      (t
       (format "%s:`%s' failed because of improper setup: %s" prefix name unit)))))
