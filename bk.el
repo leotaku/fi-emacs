@@ -162,7 +162,7 @@ Reads the description from the special `bk-expansion-alist' variable."
               (lambda () ,@pst)
               ',req
               ',wnt)
-             (unless (or (null state) (eq state 'available))
+             (when (null load-file-name)
                (bk-reach-target ',name)))
          (error
           (bk--warn "Error in block `%s' during setup: %s" ',name err))))))
