@@ -89,9 +89,9 @@ This function acts as a generalized variable."
 
 (defsubst sd--run-unit (unit)
   (condition-case err
-      (funcall (sd-unit-function unit))
-    ((debug error) (cons 'eval err))
-    (:success 'success)))
+      (prog1 (quote success)
+        (funcall (sd-unit-function unit)))
+    ((debug error) (cons 'eval err))))
 
 (defsubst sd--extract-state (unit)
   (let* ((state (sd-unit-state unit))
