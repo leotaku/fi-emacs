@@ -50,8 +50,8 @@ Note that this function does not consider terminal frames a GUI."
 (defvar fi--run-at-gui-body nil)
 (defun fi--run-at-gui ()
   (when (and (display-graphic-p))
-    (run-hooks 'fi--run-at-gui-body)
-    (remove-function after-focus-change-function #'fi--run-at-gui)))
+    (unwind-protect (run-hooks 'fi--run-at-gui-body)
+      (remove-function after-focus-change-function #'fi--run-at-gui))))
 
 (defun fi-call-silent (fun &rest args)
   "Call FUN with ARGS, wrapped in a `inhibit-message` expression.
