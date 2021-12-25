@@ -45,7 +45,7 @@ Note that this function does not consider terminal frames a GUI."
   `(if (display-graphic-p)
        (progn ,@body)
      (add-function :after after-focus-change-function #'fi--run-at-gui)
-     (push (lambda () ,@body) fi--run-at-gui-body)))
+     (add-hook 'fi--run-at-gui-body (lambda () ,@body))))
 
 (defvar fi--run-at-gui-body nil)
 (defun fi--run-at-gui ()
