@@ -36,33 +36,6 @@ This command also works when run from a daemonized Emacs instance."
     (with-selected-frame frame
       (run-hook-with-args 'after-make-frame-functions nil))))
 
-(defun fi-undo-global (arg)
-  "Undo some previous edits.
-Repeat this command to undo more edits.
-A numeric ARG serves as a repeat count.
-
-Unlike the builtin `undo' this command ignores transient mark mode."
-  (interactive "p")
-  (transient-mark-mode -1)
-  (undo arg)
-  (transient-mark-mode 1))
-
-(defun fi-undo-only-global (arg)
-  "Undo some previous edits, without redoing previous undos.
-Repeat this command to undo more edits.
-A numeric ARG serves as a repeat count.
-
-Unlike the builtin `undo-only' this command ignores transient mark mode."
-  (interactive "p")
-  (transient-mark-mode -1)
-  (undo-only arg)
-  (transient-mark-mode 1))
-
-(defun fi-universal-quit ()
-  "A version of the builtin `keyboard-quit' command that should work in any buffer."
-  (interactive)
-  (fi-simulate-key (kbd "C-g")))
-
 (provide 'fi-helpers)
 
 ;;; fi-helpers.el ends here
