@@ -5,7 +5,7 @@
 ;; Author: Leo Gaskin <leo.gaskin@le0.gs>
 ;; Created: 19 July 2019
 ;; Homepage: https://github.com/leotaku/fi-emacs
-;; Keywords: fi-emacs, configuration, extension, lisp
+;; Keywords: fi-emacs configuration lisp
 ;; Package-Version: 0.1.0
 ;; Package-Requires: ((emacs "25.1"))
 
