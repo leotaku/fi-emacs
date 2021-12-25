@@ -42,7 +42,7 @@ If the GUI is already running or has previously been started,
 execute BODY immediately.
 
 Note that this function does not consider terminal frames a GUI."
-  `(if (and (display-graphic-p))
+  `(if (display-graphic-p)
        (progn ,@body)
      (add-function :after after-focus-change-function #'fi--run-at-gui)
      (push (lambda () ,@body) fi--run-at-gui-body)))
