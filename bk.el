@@ -31,7 +31,7 @@
 ;; TODO: get file for blocks from `load-file-name'
 
 (require 'sd)
-(require 'fi-config)
+(require 'fi)
 (require 'leaf)
 
 ;;; Code:
