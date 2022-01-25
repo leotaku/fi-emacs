@@ -59,16 +59,6 @@ Intended mainly for advising existing functions."
   (let ((inhibit-message t))
     (apply fun args)))
 
-(defun fi-simulate-key (key &optional keymap)
-  "Send fake keypresses for KEY in KEYMAP.
-KEY should be a key sequence in internal Emacs notation."
-  (let ((overriding-local-map (or keymap global-map)))
-    (setq unread-command-events
-          (nconc
-           (mapcar (lambda (ev) (cons t ev))
-                   (listify-key-sequence key))
-           unread-command-events))))
-
 (provide 'fi-config)
 
 ;;; fi-config.el ends here
