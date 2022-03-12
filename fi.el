@@ -66,6 +66,9 @@ Intended mainly for advising existing functions."
   (let ((inhibit-message t))
     (apply fun args)))
 
+(defalias 'fi-keys 'leaf-keys)
+(defalias 'fi-keys* 'leaf-keys*)
+
 (provide 'fi)
 
 ;;; fi.el ends here

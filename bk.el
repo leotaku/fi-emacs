@@ -7,7 +7,7 @@
 ;; Homepage: https://github.com/leotaku/fi-emacs
 ;; Keywords: fi-emacs configuration lisp
 ;; Package-Version: 0.1.0
-;; Package-Requires: ((emacs "25.1") (leaf "4.4"))
+;; Package-Requires: ((emacs "25.1"))
 
 ;; This program is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -52,8 +52,8 @@
     (:hook      * + pst `(add-hook ',(car ~) ',(cdr ~)))
     (:start     * + pst `(,~))
     (:custom    * + pst `(fi-csetq ,(car ~) ,(cdr ~)))
-    (:bind      * + pst `(leaf-keys ,~))
-    (:bind*     * + pst `(leaf-keys* ,~))
+    (:bind      * + pst `(fi-keys ,~))
+    (:bind*     * + pst `(fi-keys* ,~))
     (:mode      * + pst  `(add-to-list
                            'auto-mode-alist
                            ',(cons
