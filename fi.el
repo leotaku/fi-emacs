@@ -67,12 +67,43 @@ Intended mainly for advising existing functions."
     (apply fun args)))
 
 (defmacro fi-keys (&rest definitions)
+  "Define the given KEY/DEFINITION pairs in the current global map.
+
+The target map can be overriden by providing the name of a keymap
+as a keyword symbol, that is, the name of the keymap preceded by
+the `:' colon character.
+
+Options can be given as keywords before or after the
+KEY/DEFINITION pairs.  The last occurrence of an option always
+takes precedence, others are ignored.  Available keywords are:
+
+:package    If non-nil, require the given package symbol before any keys are bound
+
+KEY/DEFINITION pairs are as KEY and DEF in `define-key'.
+
+In addition to KEY/DEFINITION pairs, an unlimited number of lists
+consisting of valid arguments to this macro may also be given.
+These are parsed recursively and executed before any bindings in
+the parent argument list.
+
+\(fn &optional KEYMAP &key PACKAGE &rest [KEY DEFINITION]...)"
   `(fi-keys-with-default (current-global-map) ,@definitions))
 
 (defmacro fi-keys* (&rest definitions)
+  "Define the given KEY/DEFINITION pairs in a global override map.
+
+This macro accepts all of the same arguments as `fi-keys',
+although overriding KEYMAP or PACKAGE is not recommended as it
+does not make sense when defining keys on the override map.
+
+\(fn &optional KEYMAP &key PACKAGE &rest [KEY DEFINITION]...)"
   `(fi-keys-with-default fi-key-override-global-map ,@definitions))
 
 (defmacro fi-keys-with-default (default-keymap &rest definitions)
+  "Parse and execute key bindings according to DEFINITIONS.
+
+Keys are set in DEFAULT-KEYMAP, if no other keymap is given as
+part of DEFINITIONS that would override it."
   (let (keymap package keys recursive)
     (when-let ((name (and (symbolp (car definitions))
                           (symbol-name (car definitions)))))
