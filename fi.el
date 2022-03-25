@@ -105,10 +105,10 @@ does not make sense when defining keys on the override map.
 Keys are set in DEFAULT-KEYMAP, if no other keymap is given as
 part of DEFINITIONS that would override it."
   (let (keymap package keys recursive)
-    (when-let ((name (and (symbolp (car definitions))
-                          (symbol-name (car definitions)))))
+    (when-let ((symbol (car definitions))
+               (name (and (symbolp symbol) (symbol-name symbol))))
       (when (and (string-prefix-p ":" name)
-                 (not (string= name ":package")))
+                 (not (eq symbol :package)))
         (setq keymap (intern (string-trim-left name ":")))
         (pop definitions)))
     (while (and definitions)
