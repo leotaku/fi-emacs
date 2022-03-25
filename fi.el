@@ -7,7 +7,7 @@
 ;; Homepage: https://github.com/leotaku/fi-emacs
 ;; Keywords: fi-emacs configuration lisp
 ;; Package-Version: 0.1.0
-;; Package-Requires: ((emacs "25.1") (leaf "4.4"))
+;; Package-Requires: ((emacs "25.1"))
 
 ;; This program is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -66,8 +66,47 @@ Intended mainly for advising existing functions."
   (let ((inhibit-message t))
     (apply fun args)))
 
-(defalias 'fi-keys 'leaf-keys)
-(defalias 'fi-keys* 'leaf-keys*)
+(defmacro fi-keys (&rest definitions)
+  `(fi-keys-with-default (current-global-map) ,@definitions))
+
+(defmacro fi-keys* (&rest definitions)
+  `(fi-keys-with-default fi-key-override-global-map ,@definitions))
+
+(defmacro fi-keys-with-default (default-keymap &rest definitions)
+  (let (keymap package keys recursive)
+    (when-let ((name (and (symbolp (car definitions))
+                          (symbol-name (car definitions)))))
+      (when (and (string-prefix-p ":" name)
+                 (not (string= name ":package")))
+        (setq keymap (intern (string-trim-left name ":")))
+        (pop definitions)))
+    (while (and definitions)
+      (let ((value (pop definitions)))
+        (cond ((eq value :package)
+               (setq package (pop definitions)))
+              ((and (stringp (car-safe value))
+                    (symbolp (cdr-safe value)))
+               (push (cons (kbd (car value)) (cdr value)) keys))
+              (t (push `(fi-keys-with-default ,default-keymap ,@value) recursive)))))
+    `(prog1 nil
+       ,@recursive
+       ,@(when package `((require ',package)))
+       ,@(mapcar (lambda (pair)
+                   `(define-key ,(or keymap default-keymap)
+                                ,(car pair) #',(cdr pair)))
+                 keys))))
+
+(defvar fi-key-override-global-map (make-keymap)
+  "The fi-override-global-mode keymap.")
+
+(define-minor-mode fi-key-override-global-mode
+  "A minor mode so that keymap settings override other modes."
+  :init-value t
+  :lighter "")
+
+(add-to-list
+ 'emulation-mode-map-alists
+ `((fi-key-override-global-mode . ,fi-key-override-global-map)))
 
 (provide 'fi)
 

@@ -32,7 +32,6 @@
 
 (require 'sd)
 (require 'fi)
-(require 'leaf)
 
 ;;; Code:
 
