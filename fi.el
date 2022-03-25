@@ -83,7 +83,7 @@ KEY/DEFINITION pairs are as KEY and DEF in `define-key'.
 
 In addition to KEY/DEFINITION pairs, an unlimited number of lists
 consisting of valid arguments to this macro may also be given.
-These are parsed recursively and executed before any bindings in
+These are parsed recursively and executed after any bindings in
 the parent argument list.
 
 \(fn &optional KEYMAP &key PACKAGE &rest [KEY DEFINITION]...)"
@@ -120,12 +120,12 @@ part of DEFINITIONS that would override it."
                (push (cons (kbd (car value)) (cdr value)) keys))
               (t (push `(fi-keys-with-default ,default-keymap ,@value) recursive)))))
     `(prog1 nil
-       ,@recursive
        ,@(when package `((require ',package)))
        ,@(mapcar (lambda (pair)
                    `(define-key ,(or keymap default-keymap)
                                 ,(car pair) #',(cdr pair)))
-                 keys))))
+                 keys)
+       ,@recursive)))
 
 (defvar fi-key-override-global-map (make-keymap)
   "The fi-override-global-mode keymap.")
