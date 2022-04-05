@@ -32,6 +32,7 @@
 
 (require 'sd)
 (require 'fi)
+(require 'eu)
 
 ;;; Code:
 
@@ -51,8 +52,8 @@
     (:hook      * + pst `(add-hook ',(car ~) ',(cdr ~)))
     (:start     * + pst `(,~))
     (:custom    * + pst `(fi-csetq ,(car ~) ,(cdr ~)))
-    (:bind      * + pst `(fi-keys ,~))
-    (:bind*     * + pst `(fi-keys* ,~))
+    (:bind      * + pst `(eu-keys ,~))
+    (:bind*     * + pst `(eu-keys* ,~))
     (:mode      * + pst  `(add-to-list
                            'auto-mode-alist
                            ',(cons

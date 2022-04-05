@@ -19,6 +19,7 @@ jobs:
           - fi.el
           - sd.el
           - bk.el
+          - eu.el
         include:
           - check: ert
             file: checking/sd-test.el
