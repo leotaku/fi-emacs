@@ -44,33 +44,33 @@
   :prefix "bk-")
 
 (defcustom bk-expansion-alist
-  '((:at-load   - + pre ~)
-    (:load      * + pre `(load ,(expand-file-name ~ user-emacs-directory) nil t))
-    (:config    - + pst ~)
-    (:wanted-by * = wnt ~)
-    (:requires  * + req ~)
-    (:hook      * + pst `(add-hook ',(car ~) ',(cdr ~)))
-    (:start     * + pst `(,~))
-    (:custom    * + pst `(fi-csetq ,(car ~) ,(cdr ~)))
-    (:bind      * + pst `(eu-keys ,~))
-    (:bind*     * + pst `(eu-keys* ,~))
-    (:mode      * + pst  `(add-to-list
-                           'auto-mode-alist
-                           ',(cons
-                              (or (car-safe ~) ~)
-                              (or (cdr-safe ~) name)))))
+  '((:at-load   normal add before ~)
+    (:load      mapped add before `(load ,(expand-file-name ~ user-emacs-directory) nil t))
+    (:config    normal add after ~)
+    (:wanted-by mapped set wanted ~)
+    (:requires  mapped add required ~)
+    (:hook      mapped add after `(add-hook ',(car ~) ',(cdr ~)))
+    (:start     mapped add after `(,~))
+    (:custom    mapped add after `(fi-csetq ,(car ~) ,(cdr ~)))
+    (:bind      mapped add after `(eu-keys ,~))
+    (:bind*     mapped add after `(eu-keys* ,~))
+    (:mode      mapped add after  `(add-to-list
+                                    'auto-mode-alist
+                                    ',(cons
+                                       (or (car-safe ~) ~)
+                                       (or (cdr-safe ~) name)))))
   "An alist mapping keyword to a reader, place and quoted expression."
   :group 'bk-block
   :type '(alist :value-type
                 (list
-                 (radio (symbol *)
-                        (symbol -))
-                 (radio (symbol +)
-                        (symbol =))
-                 (radio (symbol pre)
-                        (symbol pst)
-                        (symbol req)
-                        (symbol wnt))
+                 (radio (symbol mapped)
+                        (symbol normal))
+                 (radio (symbol add)
+                        (symbol set))
+                 (radio (symbol before)
+                        (symbol after)
+                        (symbol required)
+                        (symbol wanted))
                  sexp)))
 
 (defvar bk--expansion nil
@@ -85,24 +85,24 @@
          (place (nth 3 entry))
          (expr (nth 4 entry))
          (transform
-          (cond ((eq applicator '-) expr)
-                ((eq applicator '*)
+          (cond ((eq applicator 'normal) expr)
+                ((eq applicator 'mapped)
                  `(mapcar (lambda (~) ,expr) ~)))))
-    (cond ((eq setter '+)
+    (cond ((eq setter 'add)
            `((eq key ,key) (setq ,place (nconc ,place ,transform))))
-          ((eq setter '=)
+          ((eq setter 'set)
            `((eq key ,key) (setq ,place ,transform))))))
 
 (defun bk--gen-expansions (list)
   `(lambda (name alist)
-     (let (pre pst req wnt)
+     (let (before after required wanted)
        (dolist (entry alist)
          (let ((key (car entry))
                (~ (cdr entry)))
            (cond
             ,@(mapcar #'bk--gen-expansion-case list)
             (t (error "Unrecognized keyword `%s' in `%s'" key name)))))
-       (list pre pst req wnt))))
+       (list before after required wanted))))
 
 (defun bk--construct-alist (args)
   (let (result current)
@@ -145,19 +145,19 @@ Reads the description from the special `bk-expansion-alist' variable."
   (declare (indent 1))
   (let* ((alist (bk--construct-alist args))
          (result (funcall bk--expansion name alist))
-         (pre (nth 0 result))
-         (pst (nth 1 result))
-         (req (nth 2 result))
-         (wnt (nth 3 result)))
+         (before (nth 0 result))
+         (after (nth 1 result))
+         (required (nth 2 result))
+         (wanted (nth 3 result)))
     `(condition-case-unless-debug error
          (prog1 ',name
-           ,@pre
-           ,@(bk--gen-special-requirements req)
+           ,@before
+           ,@(bk--gen-special-requirements required)
            (sd-register-unit
             ',name
-            (lambda () ,@pst)
-            ',req
-            ',wnt)
+            (lambda () ,@after)
+            ',required
+            ',wanted)
            (when (null load-file-name)
              (bk-reach-target ',name)))
        (error
