@@ -64,8 +64,7 @@
   :type '(alist :value-type
                 (list
                  (radio (symbol *)
-                        (symbol -)
-                        (symbol d))
+                        (symbol -))
                  (radio (symbol +)
                         (symbol =))
                  (radio (symbol pre)
@@ -88,9 +87,7 @@
          (transform
           (cond ((eq applicator '-) expr)
                 ((eq applicator '*)
-                 `(mapcar (lambda (~) ,expr) ~))
-                ((eq applicator 'd)
-                 `(mapcar (lambda (~) (when (eq t ~) (set '~ name)) ,expr) ~)))))
+                 `(mapcar (lambda (~) ,expr) ~)))))
     (cond ((eq setter '+)
            `((eq key ,key) (setq ,place (nconc ,place ,transform))))
           ((eq setter '=)
