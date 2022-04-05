@@ -152,20 +152,19 @@ Reads the description from the special `bk-expansion-alist' variable."
          (pst (nth 1 result))
          (req (nth 2 result))
          (wnt (nth 3 result)))
-    `(let ((state (sd-unit-state (sd-access-unit ',name))))
-       ,@(bk--gen-special-requirements req)
-       (condition-case-unless-debug err
-           (prog1 ',name
-             ,@pre
-             (sd-register-unit
-              ',name
-              (lambda () ,@pst)
-              ',req
-              ',wnt)
-             (when (null load-file-name)
-               (bk-reach-target ',name)))
-         (error
-          (bk--warn "Error in block `%s' during setup: %s" ',name err))))))
+    `(condition-case-unless-debug error
+         (prog1 ',name
+           ,@pre
+           ,@(bk--gen-special-requirements req)
+           (sd-register-unit
+            ',name
+            (lambda () ,@pst)
+            ',req
+            ',wnt)
+           (when (null load-file-name)
+             (bk-reach-target ',name)))
+       (error
+        (bk--warn "Error in block `%s' during setup: %s" ',name error)))))
 
 ;;;; Interface:
 
