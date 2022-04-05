@@ -129,11 +129,11 @@
                 result))))))
 
 (defun bk-generate-expansions ()
-"Generate and compile the function used for parsing keyword arguments.
+  "Generate and compile the function used for parsing keyword arguments.
 Reads the description from the special `bk-expansion-alist' variable."
-(setq
- bk--expansion
- (byte-compile (bk--gen-expansions bk-expansion-alist))))
+  (setq
+   bk--expansion
+   (byte-compile (bk--gen-expansions bk-expansion-alist))))
 
 (prog1 "Compile expansion"
   (bk-generate-expansions))
