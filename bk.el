@@ -43,7 +43,7 @@
   :group 'lisp
   :prefix "bk-")
 
-(defcustom bk-expansion-alist
+(defcustom bk-keyword-expand-alist
   '((:at-load   normal add before ~)
     (:load      mapped add before `(load ,(expand-file-name ~ user-emacs-directory) nil t))
     (:config    normal add after ~)
@@ -73,12 +73,12 @@
                         (symbol wanted))
                  sexp)))
 
-(defvar bk--expansion nil
-  "The compiled expansion function used for parsing keyword arguments.")
+(defvar bk--parse-function nil
+  "The compiled function used for parsing keyword arguments.")
 
 ;;;; Implementation:
 
-(defun bk--generate-expansion-case (entry)
+(defun bk--generate-parse-case (entry)
   (let* ((key (nth 0 entry))
          (applicator (nth 1 entry))
          (setter (nth 2 entry))
@@ -93,14 +93,14 @@
           ((eq setter 'set)
            `((eq key ,key) (setq ,place ,transform))))))
 
-(defun bk--generate-expansions (list)
+(defun bk--generate-parse-function (list)
   `(lambda (name alist)
      (let (before after required wanted)
        (dolist (entry alist)
          (let ((key (car entry))
                (~ (cdr entry)))
            (cond
-            ,@(mapcar #'bk--generate-expansion-case list)
+            ,@(mapcar #'bk--generate-parse-case list)
             (t (error "Unrecognized keyword `%s' in `%s'" key name)))))
        (list before after required wanted))))
 
@@ -134,7 +134,7 @@
 (defmacro bk-block0 (name &rest args)
   (declare (indent 1))
   (let* ((alist (bk--construct-alist args))
-         (result (funcall bk--expansion name alist))
+         (result (funcall bk--parse-function name alist))
          (before (nth 0 result))
          (after (nth 1 result))
          (required (nth 2 result))
@@ -185,9 +185,9 @@ These can be used to group together units using `:wanted-by'."
 
 ;;;; Integrations:
 
-(prog1 "Compile expansion"
-  (setq bk--expansion
-        (byte-compile (bk--generate-expansions bk-expansion-alist))))
+(prog1 "Compile parse function"
+  (setq bk--parse-function
+        (byte-compile (bk--generate-parse-function bk-keyword-expand-alist))))
 
 (defconst bk-font-lock-keywords
   '(("(\\(bk-block[^ ]*\\)\\_>[ \t']*\\(\\(?:\\sw\\|\\s_\\)+\\)?"
