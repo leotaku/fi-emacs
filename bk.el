@@ -78,7 +78,7 @@
 
 ;;;; Implementation:
 
-(defun bk--gen-expansion-case (entry)
+(defun bk--generate-expansion-case (entry)
   (let* ((key (nth 0 entry))
          (applicator (nth 1 entry))
          (setter (nth 2 entry))
@@ -93,14 +93,14 @@
           ((eq setter 'set)
            `((eq key ,key) (setq ,place ,transform))))))
 
-(defun bk--gen-expansions (list)
+(defun bk--generate-expansions (list)
   `(lambda (name alist)
      (let (before after required wanted)
        (dolist (entry alist)
          (let ((key (car entry))
                (~ (cdr entry)))
            (cond
-            ,@(mapcar #'bk--gen-expansion-case list)
+            ,@(mapcar #'bk--generate-expansion-case list)
             (t (error "Unrecognized keyword `%s' in `%s'" key name)))))
        (list before after required wanted))))
 
@@ -115,7 +115,7 @@
     (push (nreverse current) result)
     (cdr (nreverse result))))
 
-(defun bk--gen-special-requirements (names)
+(defun bk--generate-special-requirements (names)
   (let ((result nil))
     (dolist (name names result)
       (let ((string (symbol-name name))
@@ -130,7 +130,7 @@
 Reads the description from the special `bk-expansion-alist' variable."
   (setq
    bk--expansion
-   (byte-compile (bk--gen-expansions bk-expansion-alist))))
+   (byte-compile (bk--generate-expansions bk-expansion-alist))))
 
 (prog1 "Compile expansion"
   (bk-generate-expansions))
@@ -152,7 +152,7 @@ Reads the description from the special `bk-expansion-alist' variable."
     `(condition-case-unless-debug error
          (prog1 ',name
            ,@before
-           ,@(bk--gen-special-requirements required)
+           ,@(bk--generate-special-requirements required)
            (sd-register-unit
             ',name
             (lambda () ,@after)
