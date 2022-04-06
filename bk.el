@@ -125,16 +125,6 @@
           (push `(sd-register-unit ',name (lambda () (require ',feature)))
                 result))))))
 
-(defun bk-generate-expansions ()
-  "Generate and compile the function used for parsing keyword arguments.
-Reads the description from the special `bk-expansion-alist' variable."
-  (setq
-   bk--expansion
-   (byte-compile (bk--generate-expansions bk-expansion-alist))))
-
-(prog1 "Compile expansion"
-  (bk-generate-expansions))
-
 (defun bk--warn (format-string &rest args)
   (display-warning
    'bk-block
@@ -194,6 +184,10 @@ These can be used to group together units using `:wanted-by'."
   (sd-register-unit name #'ignore dependencies nil))
 
 ;;;; Integrations:
+
+(prog1 "Compile expansion"
+  (setq bk--expansion
+        (byte-compile (bk--generate-expansions bk-expansion-alist))))
 
 (defconst bk-font-lock-keywords
   '(("(\\(bk-block[^ ]*\\)\\_>[ \t']*\\(\\(?:\\sw\\|\\s_\\)+\\)?"
