@@ -1,6 +1,6 @@
 ;;; bk.el --- Block-style init management based on sd.el -*- lexical-binding: t -*-
 
-;; Copyright (C) 2019-2021 Leo Gaskin
+;; Copyright (C) 2019-2022 Leo Gaskin
 
 ;; Author: Leo Gaskin <leo.gaskin@le0.gs>
 ;; Created: 19 July 2019
