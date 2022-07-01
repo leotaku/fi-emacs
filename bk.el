@@ -131,6 +131,8 @@
    (apply #'format format-string args)
    :warning))
 
+;;;; Interface:
+
 (defmacro bk-block0 (name &rest args)
   (declare (indent 1))
   (let* ((alist (bk--construct-alist args))
@@ -152,8 +154,6 @@
              (bk-reach-target ',name)))
        (error
         (bk--warn "Error in block `%s' during setup: %s" ',name error)))))
-
-;;;; Interface:
 
 (defmacro bk-block (name &rest args)
   (declare (indent 1))
