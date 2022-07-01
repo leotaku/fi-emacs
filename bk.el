@@ -54,11 +54,10 @@
     (:custom    mapped add after `(fi-csetq ,(car ~) ,(cdr ~)))
     (:bind      mapped add after `(eu-keys ,~))
     (:bind*     mapped add after `(eu-keys* ,~))
-    (:mode      mapped add after  `(add-to-list
-                                    'auto-mode-alist
-                                    ',(cons
-                                       (or (car-safe ~) ~)
-                                       (or (cdr-safe ~) name)))))
+    (:mode      mapped add after `(add-to-list 'auto-mode-alist
+                                               ',(cons
+                                                  (or (car-safe ~) ~)
+                                                  (or (cdr-safe ~) name)))))
   "An alist mapping keyword to a reader, place and quoted expression."
   :group 'bk-block
   :type '(alist :value-type
