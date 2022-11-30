@@ -84,6 +84,9 @@ part of DEFINITIONS that would override it."
               ((and (stringp (car-safe value))
                     (symbolp (cdr-safe value)))
                (push (cons (kbd (car value)) (cdr value)) keys))
+              ((and (vectorp (car-safe value))
+                    (symbolp (cdr-safe value)))
+               (push (cons (car value) (cdr value)) keys))
               (t (push `(eu-keys-with-default ,default-keymap ,@value) recursive)))))
     `(prog1 nil
        ,@(when package `((require ',package)))
