@@ -149,7 +149,7 @@
             (lambda () ,@after)
             ',required
             ',wanted)
-           (when (null load-file-name)
+           (unless load-in-progress
              (bk-reach-target ',name)))
        (error
         (bk--warn "Error in block `%s' during setup: %s" ',name error)))))
