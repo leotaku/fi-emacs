@@ -132,6 +132,7 @@
 
 ;;;; Interface:
 
+;;;###autoload
 (defmacro bk-block0 (name &rest args)
   (declare (indent 1))
   (let* ((alist (bk--construct-alist args))
@@ -154,18 +155,21 @@
        (error
         (bk--warn "Error in block `%s' during setup: %s" ',name error)))))
 
+;;;###autoload
 (defmacro bk-block (name &rest args)
   (declare (indent 1))
   `(bk-block0 ,name
      :wanted-by default-target
      ,@args))
 
+;;;###autoload
 (defmacro bk-block* (name &rest args)
   (declare (indent 1))
   `(bk-block ,name
      :requires ,(intern (concat "." (symbol-name name)))
      ,@args))
 
+;;;###autoload
 (defun bk-reach-target (name)
   "Try reaching the target NAME.
 
@@ -177,6 +181,7 @@ Displays warnings for all errors that have ocurred."
       (dolist (line (split-string (sd-format-error name) "\n"))
         (bk--warn line)))))
 
+;;;###autoload
 (defun bk-register-target (name &optional dependencies)
   "Register an empty unit without dependencies or code.
 These can be used to group together units using `:wanted-by'."

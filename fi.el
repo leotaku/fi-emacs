@@ -32,16 +32,19 @@
 
 ;;; Code:
 
+;;;###autoload
 (defmacro fi-csetq (sym value)
   "Set the default VALUE of SYM, respecting its custom-set property."
   `(fi-cset ',sym ,value))
 
+;;;###autoload
 (defun fi-cset (symbol value)
   "Set the default VALUE of SYMBOL, respecting its custom-set property."
   (funcall (or (get symbol 'custom-set)
                'set-default)
            symbol value))
 
+;;;###autoload
 (defmacro fi-with-gui (&rest body)
   "Evaluate BODY whenever the Emacs GUI is ready.
 
@@ -60,6 +63,7 @@ Note that this function does not consider terminal frames a GUI."
     (unwind-protect (run-hooks 'fi--run-at-gui-body)
       (remove-function after-focus-change-function #'fi--run-at-gui))))
 
+;;;###autoload
 (defun fi-advice-silent (fun &rest args)
   "Call FUN with ARGS, wrapped in a `inhibit-message` expression.
 Intended mainly for advising existing functions."

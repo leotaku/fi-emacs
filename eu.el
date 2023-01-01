@@ -32,6 +32,7 @@
 
 ;;; Code:
 
+;;;###autoload
 (defmacro eu-keys (&rest definitions)
   "Define the given KEY/DEFINITION pairs in the current global map.
 
@@ -55,6 +56,7 @@ the parent argument list.
 \(fn &optional KEYMAP &key PACKAGE &rest [KEY DEFINITION]...)"
   `(eu-keys-with-default (current-global-map) ,@definitions))
 
+;;;###autoload
 (defmacro eu-keys* (&rest definitions)
   "Define the given KEY/DEFINITION pairs in a global override map.
 
@@ -65,6 +67,7 @@ does not make sense when defining keys on the override map.
 \(fn &optional KEYMAP &key PACKAGE &rest [KEY DEFINITION]...)"
   `(eu-keys-with-default eu-key-override-global-map ,@definitions))
 
+;;;###autoload
 (defmacro eu-keys-with-default (default-keymap &rest definitions)
   "Parse and execute key bindings according to DEFINITIONS.
 
