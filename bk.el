@@ -142,7 +142,7 @@
          (required (nth 2 result))
          (wanted (nth 3 result)))
     `(prog1 ',name
-       (condition-case-unless-debug error
+       (condition-case-unless-debug err
            (progn
              ,@before
              ,@(bk--generate-special-requirements required)
@@ -152,7 +152,7 @@
               ',required
               ',wanted))
          (error
-          (bk--warn "Error in block `%s' during setup: %s" ',name error)))
+          (bk--warn "Error in block `%s' during setup: %s" ',name err)))
        (unless load-in-progress
          (bk-reach-target ',name)))))
 
