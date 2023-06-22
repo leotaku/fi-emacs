@@ -141,19 +141,20 @@
          (after (nth 1 result))
          (required (nth 2 result))
          (wanted (nth 3 result)))
-    `(condition-case-unless-debug error
-         (prog1 ',name
-           ,@before
-           ,@(bk--generate-special-requirements required)
-           (sd-register-unit
-            ',name
-            (lambda () ,@after)
-            ',required
-            ',wanted)
-           (unless load-in-progress
-             (bk-reach-target ',name)))
-       (error
-        (bk--warn "Error in block `%s' during setup: %s" ',name error)))))
+    `(prog1 ',name
+       (condition-case-unless-debug error
+           (progn
+             ,@before
+             ,@(bk--generate-special-requirements required)
+             (sd-register-unit
+              ',name
+              (lambda () ,@after)
+              ',required
+              ',wanted))
+         (error
+          (bk--warn "Error in block `%s' during setup: %s" ',name error)))
+       (unless load-in-progress
+         (bk-reach-target ',name)))))
 
 ;;;###autoload
 (defmacro bk-block (name &rest args)
