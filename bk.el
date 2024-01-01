@@ -1,6 +1,6 @@
 ;;; bk.el --- Block-style init management based on sd.el -*- lexical-binding: t -*-
 
-;; Copyright (C) 2019-2023 Leo Gaskin
+;; Copyright (C) 2019-2024 Leo Gaskin
 
 ;; Author: Leo Gaskin <leo.gaskin@le0.gs>
 ;; Created: 19 July 2019
@@ -49,7 +49,7 @@
     (:config    normal add after ~)
     (:wanted-by mapped set wanted ~)
     (:requires  mapped add required ~)
-    (:hook      mapped add after `(add-hook ',(car ~) ',(cdr ~)))
+    (:hook      mapped add after `(add-hook ',(car ~) #',(cdr ~)))
     (:start     mapped add after `(,~))
     (:custom    mapped add after `(fi-csetq ,(car ~) ,(cdr ~)))
     (:bind      mapped add after `(eu-keys ,~))
