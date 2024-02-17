@@ -41,10 +41,10 @@ SD-UNIT FORMAT:
   \(NAME state form dependencies . dependents)
 WHERE:
   \(symbolp NAME)
-  \(or (memq state '(available success)) (consp state))
+  \(or (memq state \\='(available success)) (consp state))
   \(or (null f) (functionp f))
-  \(and (listp dependencies) (all (mapcar #'symbolp dependencies)))
-  \(and (listp dependents) (all (mapcar #'symbolp dependents)))"
+  \(and (listp dependencies) (all (mapcar #\\='symbolp dependencies)))
+  \(and (listp dependents) (all (mapcar #\\='symbolp dependents)))"
   (nconc (list name 'available #'ignore nil) nil))
 
 (defsubst sd-access-unit (name)
