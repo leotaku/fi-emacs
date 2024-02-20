@@ -44,7 +44,7 @@ Options can be given as keywords before or after the
 KEY/DEFINITION pairs.  The last occurrence of an option always
 takes precedence, others are ignored.  Available keywords are:
 
-:package    If non-nil, require the given package symbol before any keys are bound
+:package    If non-nil, require the given package before any keys are bound
 
 KEY/DEFINITION pairs are as KEY and DEF in `define-key'.
 
