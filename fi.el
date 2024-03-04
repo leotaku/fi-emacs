@@ -33,18 +33,6 @@
 ;;; Code:
 
 ;;;###autoload
-(defmacro fi-csetq (sym value)
-  "Set the default VALUE of SYM, respecting its custom-set property."
-  `(fi-cset ',sym ,value))
-
-;;;###autoload
-(defun fi-cset (symbol value)
-  "Set the default VALUE of SYMBOL, respecting its custom-set property."
-  (funcall (or (get symbol 'custom-set)
-               'set-default)
-           symbol value))
-
-;;;###autoload
 (defmacro fi-with-gui (&rest body)
   "Evaluate BODY whenever the Emacs GUI is ready.
 

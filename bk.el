@@ -51,7 +51,7 @@
     (:requires  mapped add required ~)
     (:hook      mapped add after `(add-hook ',(car ~) #',(cdr ~)))
     (:start     mapped add after `(,~))
-    (:custom    mapped add after `(fi-csetq ,(car ~) ,(cdr ~)))
+    (:custom    mapped add after `(setopt ,(car ~) ,(cdr ~)))
     (:bind      mapped add after `(eu-keys ,~))
     (:bind*     mapped add after `(eu-keys* ,~))
     (:mode      mapped add after `(add-to-list 'auto-mode-alist
