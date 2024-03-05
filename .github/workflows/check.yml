@@ -24,7 +24,7 @@ jobs:
           - check: ert
             file: checking/sd-test.el
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: purcell/setup-emacs@master
       with:
         version: snapshot
